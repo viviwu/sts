@@ -1,0 +1,136 @@
+environment: paper
+config_version: "1"
+rules_version: "1"
+# Optional: point at a JSONL path to append across restarts (FileEventLedger).
+# Unset (default) keeps the deterministic in-memory drill. Relative paths
+# resolve against this file's directory (bin/cfg).
+# ledger_file: ../db/ledger.jsonl
+# Optional async SQLite query projection (M9-3): unset disables it; set it
+# to enable (JSONL stays the recovery authority). Demo: see demo.yaml.
+# sqlite_file: ../db/qts.db
+# Optional formal-phase PostgreSQL projection: NAMES an env var holding the
+# DSN (the DSN itself never enters yaml). Mutually exclusive with
+# sqlite_file above; unset disables. Needs a PG-gated build
+# (-DQTS_ENABLE_PG=ON, default OFF keeps zero system deps).
+# postgres:
+#   conninfo_env: QTS_PG_CONNINFO
+# Optional Prometheus scrape endpoint (observability): "host:port" serves
+# the metrics registry on /metrics (anything else 404s). Empty disables
+# (default: drills and offline tools stay silent). Loopback only unless
+# ops explicitly binds wider. A bad listen address refuses startup.
+# metrics:
+#   listen: 127.0.0.1:9090
+# Optional live-state snapshot for qts_admin state (zero IPC): small JSON
+# written every 50 ticks and at shutdown.
+# state_file: ../db/live-state.json
+# Optional structured-log file sink (M9-1/M9.2): unset keeps stdout-only
+# logging; set it to tee one JSON object per line into a file as well.
+# The file value is a pattern: strftime % directives expand, then a
+# -YYYYMMDD-HHMMSS-pid<PID> stamp is inserted, so names differ per day and
+# per startup (long runs rotate at midnight automatically). Enabled here so
+# every drill leaves its trace in ./bin/log (unique name, never overwritten).
+log:
+  file: ../log/qts-paper.log
+  level: info  # one of debug/info/warn/error (M9.1, default info)
+# Optional continuous demo feed (M9-0): unset/disabled keeps the one-shot
+# drill; enabled runs a deterministic simulated walk (ticks: 0 = until
+# SIGINT). Demo: see demo.yaml.
+# demo:
+#   enabled: false
+#   ticks: 500
+#   interval_ms: 100
+#   seed: 42
+# Optional live vendor sources (M7-2 server wiring, vendor-gated builds
+# only: -DQTS_ENABLE_VENDOR_SDKS=ON; default builds refuse vendor brokers).
+# Customer identity/password are NEVER configured: the trader passes them at
+# gateway login and the counter session builds lazily (ADR-053). The gateway
+# user pair below is a yaml session param (private files hold real values).
+# ama:
+#   enabled: false
+#   ums_servers: [192.168.1.101:11001]  # 1..8 ip:port
+#   staleness_ms: 3000
+# quantapi:
+#   locations: 172.16.109.17:32001  # required when accounts[].broker == quantapi
+#   order_way: "4"
+#   agw_user: user5        # optional, pair with agw_password
+#   agw_password: password5
+# Live-trading approval (M7-2d, ADR-039): human-signed JSON covering
+# non-paper brokers for one trade date (`qts_admin approve` writes it).
+# Empty (default) means no live trading: vendor brokers refuse to build
+# before their session is even constructed. Paper channels never need it.
+# control:
+#   approval_file: ../db/live-approval.json
+#   sidecar_path: ../db/quantapi.sidecar  # empty = next to ledger_file
+# Trading-day boundary (local HH:MM, default 00:01): long runs settle
+# in place on crossing (books -> OMS dedup -> trade_date restamp).
+# trading_day:
+#   rollover: "00:01"
+# Paper-simulator fidelity (self-owned channels): starting cash, lagged
+# delivery, per-unit slippage and fill fees in basis points. Latency needs
+# wall-clock time to pass, so it only bites in paced long runs.
+# paper_sim:
+#   starting_cash: 1000000
+#   latency_ms: 0
+#   slippage: 0
+#   fee_bp: 0
+#   # Fault drills (long runs only): drop channels on schedule to exercise
+#   # freeze/resume/failover. Keep windows clear of the final tick: ending
+#   # mid-outage refuses cancels and exits dirty (by design, loudly).
+#   chaos_every_ticks: 30
+#   chaos_outage_ticks: 10
+#   chaos_channels: [simulated]
+# Disk retention (P0 bound): newest per-startup log files kept (0 keeps
+# everything); the JSONL ledger rotates into archive/ at graceful shutdown
+# past this size (0 rotates every shutdown), only with no open orders.
+retention:
+  log_files: 20
+  ledger_rotate_mb: 64
+accounts:
+  # Channel selection: broker names a built TradeApi ("simulated" or
+  # "alternate" for the self-developed paper channels; vendor names need a
+  # vendor-gated build). One broker shared by N accounts reuses one instance.
+  # A dual-channel routed example lives in dual-paper.yaml.
+  - id: paper
+    broker: simulated
+# Optional smart routing (M8-0, ADR-030): fee is contractual per channel;
+# fill_rate_bps/latency_us start as yesterday's aggregates (M8-2 measures
+# online). Absent keeps single-channel behavior. When present, each entry
+# names an accounts[].broker and the gateway routes through a Router
+# (multi-broker without routing is rejected); live example: dual-paper.yaml.
+# routing:
+#   weights: {fee: 1, latency: 1, fill: 1}
+#   channels:
+#     - channel: simulated
+#       fee_bps: 25
+#       fill_rate_bps: 9950
+#       latency_us: 500
+#       split_weight: 7  # >0 joins M8-1 pro-rata splits; 0/absent = pick only
+risk:
+  max_order_quantity: 1000
+  max_order_notional: 10000000
+  max_position_quantity: 0  # on resulting |net|; 0 disables (fed live from fills)
+  enforce_sellable: false  # strict T+1 sells; off keeps the inventory-assuming grid runnable
+  daily_loss_limit: 0  # day Arithmetic PnL floor; breached days only allow pure closes (0 disables)
+  trading_enabled: true
+  # Submission throttle (sliding window, needs no other setup):
+  # rate:
+  #   max_orders: 100
+  #   window_ms: 60000
+  # Initial kill-switch state (empty = all open; runtime toggling is future work):
+  # blocked_strategies: [grid-1]
+  # blocked_accounts: []
+  # blocked_instruments: []
+strategies:
+  - id: grid-1
+    type: grid
+    enabled: true
+    account: paper
+    instrument: TEST
+    lower: 900
+    upper: 1100
+    grids: 4
+    quantity: 100
+    start: 1000
+# Execution algorithm shared by all parents (immediate|twap|pov|vwap|iceberg).
+execution:
+  algo: immediate

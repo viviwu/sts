@@ -1,0 +1,70 @@
+# QTS dual-paper demo: two self-developed channels behind the Router.
+# simulated fills grid intents at reference; alternate enforces tick 50 /
+# lot 200 and reports rejections per its own rules (visible in the ledger).
+# Selection is yaml-only (no code change); no split weights here, so the
+# Router picks the cheaper channel per order (selection stage, M8-0).
+# Not for live trading.
+environment: paper
+config_version: "1"
+rules_version: "1"
+# Recovery authority: JSONL event stream, appended across restarts.
+ledger_file: ../db/dual-ledger.jsonl
+# Query projection: async SQLite read model (qts_admin db --sqlite ...).
+sqlite_file: ../db/dual.db
+# Live-state snapshot for qts_admin state (zero IPC).
+state_file: ../db/dual-state.json
+accounts:
+  - id: paper-sim
+    broker: simulated
+  - id: paper-alt
+    broker: alternate
+risk:
+  max_order_quantity: 1000
+  max_order_notional: 10000000
+  trading_enabled: true
+strategies:
+  - id: grid-1
+    type: grid
+    enabled: true
+    account: paper-sim
+    instrument: TEST
+    lower: 900
+    upper: 1100
+    grids: 4
+    quantity: 100
+    start: 1000
+# Execution algorithm shared by all parents (immediate|twap|pov|vwap|iceberg).
+execution:
+  algo: immediate
+# Smart routing (M8-0): fee contractual per channel; fill_rate_bps/latency_us
+# are yesterday's aggregates. Router : TradeApi, OMS untouched.
+routing:
+  weights: {fee: 1, latency: 1, fill: 1}
+  channels:
+    - channel: simulated
+      fee_bps: 25
+      fill_rate_bps: 9950
+      latency_us: 500
+    - channel: alternate
+      fee_bps: 50
+      fill_rate_bps: 10000
+      latency_us: 800
+# Structured-log file sink: stdout stays, a copy goes to a per-day,
+# per-startup unique file derived from this pattern.
+log:
+  file: ../log/dual-paper.log
+  level: info
+# Continuous demo feed: deterministic walk (seed-pinned), ticks == 0 runs
+# until SIGINT. interval_ms paces the loop for tail-able demos.
+demo:
+  enabled: true
+  ticks: 500
+  interval_ms: 100
+  seed: 42
+  # Standing depth for M6 book simulation (simulated channel only).
+  depth_levels: 5
+  depth_quantity: 50
+  depth_tick: 1
+# Trading-day boundary (local HH:MM): settle chain fires on crossing.
+trading_day:
+  rollover: "00:01"

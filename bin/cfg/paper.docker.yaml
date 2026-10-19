@@ -1,0 +1,51 @@
+# QTS paper service config for the container slot (deploy/docker-compose.yml).
+# Same drill semantics as paper.example.yaml, but stateful paths point at
+# the persistent volume (/var/lib/qts) instead of the ephemeral ./bin
+# tree, and restart is left to compose ("unless-stopped"). Not for live
+# trading.
+environment: paper
+config_version: "1"
+rules_version: "1"
+# Recovery authority on the persistent volume (appended across restarts and
+# container rebuilds; back it up per docs/runbook.md §4).
+ledger_file: /var/lib/qts/ledger.jsonl
+# Query projection next to the ledger (same volume, same lifecycle).
+sqlite_file: /var/lib/qts/qts.db
+# Live-state snapshot for qts_admin state (zero IPC).
+state_file: /var/lib/qts/live-state.json
+# Structured-log file sink: stdout stays (docker logs), a copy lands on the
+# volume next to the ledger.
+log:
+  file: /var/lib/qts/qts-paper.log
+  level: info  # one of debug/info/warn/error (M9.1, default info)
+# Disk retention (same defaults as paper.example.yaml).
+retention:
+  log_files: 20
+  ledger_rotate_mb: 64
+accounts:
+  # Channel selection: broker names a built TradeApi ("simulated" or
+  # "alternate" for the self-developed paper channels; vendor names need a
+  # vendor-gated build).
+  - id: paper
+    broker: simulated
+risk:
+  max_order_quantity: 1000
+  max_order_notional: 10000000
+  max_position_quantity: 0  # on resulting |net|; 0 disables (fed live from fills)
+  enforce_sellable: false  # strict T+1 sells; off keeps the inventory-assuming grid runnable
+  daily_loss_limit: 0  # day Arithmetic PnL floor; breached days only allow pure closes (0 disables)
+  trading_enabled: true
+strategies:
+  - id: grid-1
+    type: grid
+    enabled: true
+    account: paper
+    instrument: TEST
+    lower: 900
+    upper: 1100
+    grids: 4
+    quantity: 100
+    start: 1000
+# Execution algorithm shared by all parents (immediate|twap|pov|vwap|iceberg).
+execution:
+  algo: immediate

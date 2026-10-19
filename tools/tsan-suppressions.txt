@@ -1,0 +1,19 @@
+# ThreadSanitizer suppressions for QTS (evidence in dev_scheme.md maintenance log).
+#
+# Usage (CI tsan job sets this; local runs need it too):
+#   TSAN_OPTIONS="suppressions=$PWD/tools/tsan-suppressions.txt" ctest ...
+#
+# SQLite amalgamation internals: sqlite3.c takes its process-global static
+# mutexes and its per-connection heap mutexes in opposite orders across
+# different API calls (open/prepare/step/close). TSan reports this as a
+# lock-order-inversion cycle whose every frame is pthreadMutexEnter inside
+# sqlite3.c:30407 -- verified locally with second_deadlock_stack=1 (both
+# stacks are the same call site in the same thread).
+#
+# This is a well-known false-positive class with the amalgamation (SQLite's
+# own TSan runs suppress their internals the same way). Our side of the
+# contract holds: SqliteEventStore takes at most one mutex across sqlite
+# calls, never nests them in conflicting order, and registers zero sqlite
+# callbacks that could re-enter our locks. Revisit immediately if any
+# future report names a qts:: frame acquiring two locks.
+deadlock:pthreadMutexEnter

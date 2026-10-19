@@ -1,104 +1,230 @@
-# Auto generated files
-[Dd]ebug/
-[Rr]elease/
-build/*
-*.slo
-*.lo
+# C++ / CMake build artifacts
+build/
+build-*/
+out/
+cmake-build-*/
+cmake-build-debug/
+cmake-build-release/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CMakeScripts/
+Testing/
+Makefile
+CTestTestfile.cmake
+_deps/
+install_manifest.txt
+compile_commands.json
+CMakeSettings.json
+
+# Compiled object files
 *.o
 *.obj
-*.suo
-*.tlog
-*.ilk
-*.log
-*.pdb
-*.idb
-*.iobj
-*.ipdb
-*.opensdf
-*.sdf
+*.lo
+*.slo
+*.ko
 
-# Compiled Dynamic libraries
+# Static / shared libraries
+*.a
+*.la
+*.lai
+*.lib
 *.so
+*.so.*
 *.dylib
 *.dll
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
+*.def
+*.exp
 
 # Executables
 *.exe
 *.out
 *.app
+*.i*86
+*.x86_64
+*.hex
 
-# Codelite
-.codelite
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+*.ilk
 
-# KDevelop
-*.kdev4
+# Dependency / generated files
+*.d
+*.dep
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qm
+*.pro.user*
 
-# .orig files
-*.orig
-
-# example  files
-example/*
-!example/example.cpp
-!example/bench.cpp
-!example/utils.h
-!example/Makefile*
-!example/example.sln
-!example/example.vcxproj
-!example/CMakeLists.txt
-!example/meson.build
-!example/multisink.cpp
-!example/jni
-
-# generated files
-generated
-version.rc
-
-# Cmake
-CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Makefile
-cmake_install.cmake
-install_manifest.txt
-/tests/tests.VC.VC.opendb
-/tests/tests.VC.db
-/tests/tests
-/tests/logs/*
-spdlogConfig.cmake
-spdlogConfigVersion.cmake
-compile_commands.json
-
-# idea
+############
+# CLion / JetBrains
+############
 .idea/
-.cache/
+*.iml
+*.iws
+*.ipr
+.idea_modules/
+atlassian-ide-plugin.xml
+com_crashlytics_export_strings.xml
+crashlytics.properties
+crashlytics-build.properties
+fabric.properties
+
+############
+# VS Code
+############
 .vscode/
-cmake-build-*/
-*.db
-*.ipch
-*.filters
-*.db-wal
-*.opendb
-*.db-shm
-*.vcxproj
-*.tcl
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/
+*.code-workspace
+
+############
+# Xcode / macOS
+############
+# Xcode build
+DerivedData/
+*.xcodeproj/
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/xcschemes/*.xcscheme
+*.xcworkspace/
+!*.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+*.xcuserstate
+*.xcbkptlist
+*.xcscheme
+*.xccheckout
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+
+############
+# Visual Studio / Windows
+############
+.vs/
+*.vcxproj.user
+*.vcproj.user
+*.sln.docstates
+*.suo
 *.user
-*.sln
+*.userosscache
+*.sln.docstates
+*.pidb
+*.svclog
+*.scc
+ipch/
+x64/
+x86/
+[Bb]in/
+[Oo]bj/
+[Rr]elease/
+[Dd]ebug/
+*.tlog
+*.lastbuildstate
 
-# macos
-**/.DS_store
-**/.xcodeproj/
+############
+# Linux / other editors
+############
+*~
+*.swp
+*.swo
+*#
+.#*
+\#*#
+.vim/
+*.kdev4
+.kdev4/
+*.kate-swp
+.project
+.cproject
+.settings/
 
+############
+# Package managers / tools
+############
+vcpkg_installed/
+.conan/
+conaninfo.txt
+conanbuildinfo.*
+graph_info.json
+.cache/
+*.ninja
+.ninja_deps
+.ninja_log
 
-**/backup/
-**/local/
-**/bin/
-**/build/
-**/output/
-*.zip
-*.bak
+# Test / coverage / sanitizer artifacts
+*.gcda
+*.gcno
+*.gcov
+lcov.info
+coverage/
+*.profraw
+*.profdata
+*.log
+/core
+/core.*
+vgcore.*
+
+# Doxygen
+html/
+latex/
+
+# QTS unified runtime layout (./bin): built binaries, logs and databases are
+# local-only; only the yaml configs under ./bin/cfg are tracked (plus empty
+# dir markers so the layout is visible after a fresh clone). NOTE: the
+# directory itself must be re-included first -- a parent excluded by [Bb]in/
+# above cannot have children re-included otherwise.
+!/bin/
+/bin/*
+!/bin/cfg/
+!/bin/log/
+!/bin/db/
+/bin/cfg/*
+/bin/log/*
+/bin/db/*
+!/bin/cfg/*.yaml
+!/bin/cfg/*.csv
+!/bin/log/.gitkeep
+!/bin/db/.gitkeep
+# Local runtime backups (qts.sh backup / recover-drill output).
+/backup/
+
+# Local-only translated copy of AGENTS.md (not tracked).
+/AGENTS-zh.md
+
+# In-repo broker SDKs (ADR-040): pinned vendor binaries tracked
+# deliberately (private repo only; see vendor/README.md guardrails).
+# DEMO SOURCES, *.lic FILES AND CREDENTIALS MUST NEVER BE ADDED HERE.
+!/vendor/ama/lib/Lnx64/libama.so
+!/vendor/ama/lib/Lnx64/libfmdutil.so
+!/vendor/ama/lib/Lnx64/libllmi.so
+!/vendor/ama/lib/Lnx64/librmm.so
+!/vendor/ama/lib/Lnx64/librum.so
+!/vendor/ama/lib/Lnx64/libz.so.1
+!/vendor/quantapi/lib/libatpquantapi.so
+# Local-only vendor license (SDK stats it next to the .so; never commit).
+/vendor/quantapi/lib/atp_quant_api.lic

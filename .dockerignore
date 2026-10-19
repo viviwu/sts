@@ -1,0 +1,11 @@
+# Keep the image build hermetic: local build trees, VCS metadata and
+# OS junk never enter the context.
+build/
+build-*/
+cmake-build-*/
+out/
+.git/
+.idea/
+.vscode/
+.DS_Store
+deploy/paper.env

@@ -1,0 +1,52 @@
+# QTS paper drill (M3-4 local slot). Not for live trading.
+#
+# Usage:
+#   cp deploy/paper.env.example deploy/paper.env   # optional, paper needs no secrets
+#   docker compose -f deploy/docker-compose.yml config   # validate only
+#   docker compose -f deploy/docker-compose.yml up --build qts-paper
+#
+# The ledger and broker sequence files live in the named volume
+# `ledger-data` (/var/lib/qts). Back that volume up before upgrades;
+# recovery steps are in docs/runbook.md.
+services:
+  qts-paper:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    volumes:
+      - ledger-data:/var/lib/qts
+    env_file:
+      - path: ./paper.env
+        required: false
+    command: ["./bin/qts_server", "bin/cfg/paper.docker.yaml"]
+    restart: "unless-stopped"
+
+  # --- Post-M3 slots (ADR-021): uncomment when infra lands. ---
+  # PostgreSQL projection backend (ADR-038, wired): the database side is
+  # live here; the client side links system libpq in PG-gated builds
+  # (-DQTS_ENABLE_PG=ON, default OFF) and resolves the DSN from
+  # QTS_PG_CONNINFO (password via environment, never committed).
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: qts
+      POSTGRES_DB: qts
+      # POSTGRES_PASSWORD_FILE authoritative; the example env file only
+      # carries the matching DSN for the client side.
+    env_file:
+      - path: ./paper.env
+        required: false
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+  # clickhouse:
+  #   image: clickhouse/clickhouse-server:24.8
+  #   volumes:
+  #     - ch-data:/var/lib/clickhouse
+  # otel-collector:
+  #   image: otel/opentelemetry-collector:0.111.0
+  #   command: ["--config=/etc/otel-collector.yaml"]
+
+volumes:
+  ledger-data:
+  pg-data:
+  # ch-data:

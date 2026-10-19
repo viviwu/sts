@@ -1,0 +1,145 @@
+# QTS sweep-sim: multi-board pass-through sweep over the QuantAPI SIM counter.
+# Six manual gateway sells (SSE main x2, SZSE main x2, ChiNext x2), one per
+# board representative, plus the proven sim-grid on 600000.SSE (kept enabled:
+# the server refuses to start with zero enabled strategies). Bands below are
+# the real T-day bands from the counter security-info probe (2026-10-14).
+# Secrets come from QTS_QUANTAPI_* env, never this file.
+environment: paper
+config_version: "1"
+rules_version: "1"
+ledger_file: ../db/sweep-sim-ledger.jsonl
+sqlite_file: ../db/sweep-sim.db
+state_file: ../db/sweep-sim-state.json
+accounts:
+  - id: paper-book
+    broker: simulated
+    security_account_id: A123456789
+  - id: live
+    broker: quantapi
+    security_account_id: A461951056
+risk:
+  max_order_quantity: 200
+  max_order_notional: 100000000
+  trading_enabled: true
+  enforce_sellable: true
+strategies:
+  - id: sim-grid
+    type: grid
+    enabled: true
+    account: live
+    instrument: 600000.SSE
+    lower: 88000
+    upper: 106000
+    grids: 4
+    quantity: 100
+    start: 97000
+execution:
+  algo: immediate
+routing:
+  weights: {fee: 1, latency: 1, fill: 1}
+  channels:
+    - channel: quantapi
+      fee_bps: 25
+      fill_rate_bps: 10000
+      latency_us: 500
+quantapi:
+  locations: "172.16.109.17:32001"
+  order_way: "4"
+log:
+  file: ../log/qts-sweep-sim.log
+  level: info
+demo:
+  enabled: true
+  ticks: 600
+  interval_ms: 1000
+  seed: 7
+  feed: file
+  file: sweep-quotes.csv
+trading_day:
+  rollover: "00:01"
+instruments:
+  - id: 600000.SSE
+    exchange: sse
+    board: main
+    tick: 100
+    min_qty: 100
+    lot_step: 100
+    limit_down: 86300
+    limit_up: 105500
+  - id: 600185.SSE
+    exchange: sse
+    board: main
+    tick: 100
+    min_qty: 100
+    lot_step: 100
+    limit_down: 41900
+    limit_up: 51200
+  - id: 000001.SZSE
+    exchange: szse
+    board: main
+    tick: 100
+    min_qty: 100
+    lot_step: 100
+    limit_down: 104100
+    limit_up: 127300
+  - id: 002703.SZSE
+    exchange: szse
+    board: main
+    tick: 100
+    min_qty: 100
+    lot_step: 100
+    limit_down: 132800
+    limit_up: 162300
+  - id: 300261.SZSE
+    exchange: szse
+    board: chinext
+    tick: 100
+    min_qty: 100
+    lot_step: 100
+    limit_down: 38800
+    limit_up: 58200
+  - id: 300058.SZSE
+    exchange: szse
+    board: chinext
+    tick: 100
+    min_qty: 100
+    lot_step: 100
+    limit_down: 104300
+    limit_up: 156500
+paper_sim:
+  starting_cash: 10000000
+  starting_positions:
+    - instrument: 600000.SSE
+      quantity: 1600
+      avg_cost: 97000
+      strategy: sim-grid
+    # Pass-through mirror of verified broker-truth sellable (smoke snapshot
+    # 2026-10-14: each >= 1600). Gateway manual sells land in passthrough.
+    - instrument: 600000.SSE
+      quantity: 100
+      avg_cost: 95900
+      strategy: passthrough
+    - instrument: 600185.SSE
+      quantity: 100
+      avg_cost: 46500
+      strategy: passthrough
+    - instrument: 000001.SZSE
+      quantity: 100
+      avg_cost: 115700
+      strategy: passthrough
+    - instrument: 002703.SZSE
+      quantity: 100
+      avg_cost: 147500
+      strategy: passthrough
+    - instrument: 300261.SZSE
+      quantity: 100
+      avg_cost: 48500
+      strategy: passthrough
+    - instrument: 300058.SZSE
+      quantity: 100
+      avg_cost: 130400
+      strategy: passthrough
+control:
+  inbox: ../db/sweep-sim-inbox.jsonl
+gateway:
+  socket: ../db/sweep-gateway.sock

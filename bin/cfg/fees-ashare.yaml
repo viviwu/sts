@@ -1,0 +1,16 @@
+# QTS paper fee table (M11-6): default schedule plus exact instrument-id
+# overrides. Referenced by paper_sim.fee_file (relative to bin/cfg/).
+# Rates are per-million (2500 = 0.25%% = 万2.5); amounts are Price units
+# (50000 = 5 yuan). All keys optional, all values default to 0 (free).
+default:
+  commission_ppm: 2500
+  commission_minimum: 50000
+  stamp_ppm: 500
+  transfer_ppm: 100
+instruments:
+  # VIP seat example: cheaper commission, same stamp/transfer.
+  600000.SSE:
+    commission_ppm: 2000
+    commission_minimum: 50000
+    stamp_ppm: 500
+    transfer_ppm: 100

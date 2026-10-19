@@ -1,0 +1,148 @@
+# QTS long-run demo (M9, ADR-034): simulated walk -> grid -> risk -> OMS ->
+# simulated matching, with JSONL ledger + log file + SQLite projection.
+# Not for live trading.
+environment: paper
+config_version: "1"
+rules_version: "1"
+# Recovery authority: JSONL event stream, appended across restarts.
+# Relative paths resolve against this file's directory (bin/cfg), so the
+# layout works regardless of the working directory the gateway starts from.
+ledger_file: ../db/qts-demo-ledger.jsonl
+# Query projection: async SQLite read model (qts_admin db --sqlite ...).
+sqlite_file: ../db/qts-demo.db
+# Live-state snapshot for qts_admin state (zero IPC): small JSON written
+# every 50 ticks and at shutdown. Empty disables.
+state_file: ../db/live-state.json
+accounts:
+  - id: paper
+    broker: simulated
+    # A-share identity for venue validation (required once instruments below
+    # is non-empty; empty keeps the legacy venue-agnostic path).
+    # security_account_id: A123
+risk:
+  max_order_quantity: 1000
+  max_order_notional: 10000000
+  trading_enabled: true
+  # Strict T+1 (needs paper_sim.starting_positions below for opening stock):
+  # enforce_sellable: true
+strategies:
+  # Long runs fan out to EVERY enabled entry (one shared execution queue,
+  # per-strategy id prefixes, per-strategy baskets); the one-shot drill keeps
+  # the first enabled only so its counts never move.
+  - id: grid-1
+    type: grid
+    enabled: true
+    account: paper
+    instrument: TEST
+    lower: 900
+    upper: 1100
+    grids: 4
+    quantity: 100
+    start: 1000
+# Execution algorithm shared by all parents (immediate|twap|pov|vwap|iceberg).
+execution:
+  algo: immediate
+# Structured-log file sink (M9-1/M9.2): stdout stays, a copy goes to a file
+# derived from this pattern. The resolved name always differs per day and
+# per startup: strftime % directives expand, then -YYYYMMDD-HHMMSS-pid<PID>
+# is inserted (e.g. bin/log/qts-demo-20261002-123918-pid6815.log); a long run
+# crossing midnight rotates automatically. The resolved path is printed in
+# the first stdout line ("log_file"). level: debug/info/warn/error.
+log:
+  file: ../log/qts-demo.log
+  level: info
+# Continuous demo feed (M9-0): deterministic walk (seed-pinned), ticks == 0
+# runs until SIGINT. interval_ms paces the loop for tail-able demos.
+demo:
+  enabled: true
+  ticks: 500
+  interval_ms: 100
+  seed: 42
+  # Standing depth for M6 book simulation (0 levels = reference-price fills).
+  depth_levels: 5
+  depth_quantity: 50
+  depth_tick: 1
+  # Mock-market realism (M11-0, all opt-in, 0 = off): leading auction_ticks,
+  # halt window [halt_after, halt_after+halt_for), dirty ticks every
+  # stale_every/crossed_every. Held ticks skip strategy + submit (drain live).
+  auction_ticks: 0
+  halt_after: 0
+  halt_for: 0
+  stale_every: 0
+  crossed_every: 0
+  # Market source (M11-2): simulated = legacy single-symbol walk on the
+  # strategy instrument; ama = one AMA-shaped walk per instruments entry
+  # (CODE.SUFFIX, production normalizer + real L10 depth). ama needs
+  # instruments + security_account_id, strategies must list master ids.
+  # file = replay one CSV row per tick from demo.file below
+  # (instrument,last,bid,ask,bid_qty,ask_qty in file order; EOF ends the
+  # demo early with the normal graceful shutdown). Missing or malformed
+  # files refuse startup; '#' comments and blank lines are ignored.
+  feed: simulated
+  # Quote file, only for feed: file (relative paths resolve to bin/cfg).
+  # Missing or malformed files refuse startup.
+  # file: quotes.csv
+# Trading-day boundary (local HH:MM): the long run fires the settle chain
+# (channel books -> OMS dedup -> trade_date restamp) on crossing.
+trading_day:
+  rollover: "00:01"
+# Instrument master (M11-1, optional, empty = venue-agnostic legacy path).
+# When set, unknown symbols fail closed, orders are tick/lot/band checked,
+# and the allowlist pins to these ids. Grid identity (exchange/board) is
+# derived from here + accounts[].security_account_id.
+# instruments:
+#   - id: TEST
+#     exchange: sse
+#     board: main
+#     tick: 1
+#     min_qty: 100
+#     lot_step: 100
+#     max_qty: 1000000
+#     sell_odd_lot_only: true
+#     market_orders_allowed: true
+#     limit_down: 800
+#     limit_up: 1200
+# Paper fidelity (optional): latency/slippage/legacy fee_bp, opening
+# inventory (settled positions funded into every paper channel at startup,
+# immediately sellable, cash untouched), and the A-share fee schedule below.
+# paper_sim:
+#   starting_cash: 1000000
+#   starting_positions:
+#     - instrument: TEST
+#       quantity: 5000
+#       avg_cost: 1000
+# fees: replaces fee_bp entirely when present (rates in ppm = 百万分之,
+# 2500 = 万2.5): commission both sides with per-fill minimum, stamp
+# sell-only, transfer both sides. Absent keeps the exact legacy
+# commission-only behavior.
+# paper_sim:
+#   fees:
+#     commission_ppm: 2500
+#     commission_minimum: 50000
+#     stamp_ppm: 500
+#     transfer_ppm: 100
+# fee_file: dedicated fee table with per-instrument overrides (wins over the
+# inline fees: above when both are set). See fees-ashare.yaml.
+# paper_sim:
+#   fee_file: fees-ashare.yaml
+# Operator inbox (M11-4, optional, empty = disabled): one JSON command per
+# line, appended by `qts_admin send --inbox ...` while the server runs
+# (cancel/cancel-all/block-*/halt/resume/replace). Cancel commands land in
+# the ledger audit trail; switch commands are structured-log audited.
+# control:
+#   inbox: ../db/control-inbox.jsonl
+# Live query socket (observability, optional, empty = disabled): when set,
+# the server answers `qts_admin state --socket ...` with freshly built
+# live-state JSON once per tick (tick-serviced, no extra thread, no races).
+# Unix-domain socket; filesystem permissions are the access control.
+# control:
+#   socket: ../db/qts-query.sock
+# Downstream gateway (ADR-050, optional, empty socket+bind = disabled):
+# Unix socket and/or TCP (same JSON line protocol) serving the qts::gateway API
+# (submit/strategy/query/subscribe) to frontend apps (qts_cli/qts_app/...).
+# No passwords live here by design: paper accounts stay open (socket
+# permissions are the access control); live-broker accounts log in with their
+# broker password (env, never yaml). bind stays loopback without TLS.
+# gateway:
+#   socket: ../db/qts-gateway.sock
+#   bind: 127.0.0.1:19001

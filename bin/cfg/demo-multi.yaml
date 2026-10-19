@@ -1,0 +1,153 @@
+# QTS multi-symbol multi-strategy demo: AMA-shaped simulated feed over two
+# A-share symbols (SSE + SZSE) fanning out to two grids plus one rebalancer.
+# Strict business posture throughout: instrument master + T+1 + fee table +
+# opening inventory. Not for live trading.
+environment: paper
+config_version: "1"
+rules_version: "1"
+# Recovery authority: JSONL event stream, appended across restarts.
+# Relative paths resolve against this file's directory (bin/cfg).
+ledger_file: ../db/multi-ledger.jsonl
+# Query projection: async SQLite read model (qts_admin db --sqlite ...).
+sqlite_file: ../db/multi.db
+# Live-state snapshot for qts_admin state (zero IPC).
+state_file: ../db/multi-state.json
+accounts:
+  - id: paper
+    broker: simulated
+    # A-share identity: required now that instruments below is non-empty.
+    security_account_id: A123456789
+risk:
+  max_order_quantity: 5000
+  max_order_notional: 10000000
+  trading_enabled: true
+  # Strict T+1: sells must come from settled inventory (funded below).
+  enforce_sellable: true
+  # Buying power: buys must fit inside synced cash minus live buy exposure.
+  enforce_cash: true
+strategies:
+  # Per-symbol grids plus one cross-symbol rebalancer; long runs fan out to
+  # every enabled entry (per-strategy id prefixes and baskets).
+  - id: grid-sse
+    type: grid
+    enabled: true
+    account: paper
+    instrument: 600000.SSE
+    lower: 900
+    upper: 1100
+    grids: 4
+    quantity: 100
+    start: 1000
+  - id: grid-szse
+    type: grid
+    enabled: true
+    account: paper
+    instrument: 000001.SZSE
+    lower: 900
+    upper: 1100
+    grids: 4
+    quantity: 100
+    start: 1000
+  - id: bal-multi
+    type: rebalance
+    enabled: true
+    account: paper
+    band_bps: 800
+    targets:
+      - instrument: 600000.SSE
+        weight_bps: 2000
+      - instrument: 000001.SZSE
+        weight_bps: 2000
+# Execution algorithm shared by all parents (immediate|twap|pov|vwap|iceberg).
+execution:
+  algo: immediate
+# Structured-log file sink: stdout stays, a copy goes to a per-day,
+# per-startup unique file derived from this pattern.
+log:
+  file: ../log/qts-multi.log
+  level: info
+# Continuous demo feed: AMA-shaped deterministic walks (seed-pinned), one
+# snapshot per instrument per tick through the production normalizer (real
+# L10 depth, limits, phases). ticks == 0 runs until SIGINT.
+demo:
+  enabled: true
+  ticks: 200
+  interval_ms: 0
+  seed: 7
+  auction_ticks: 0
+  halt_after: 0
+  halt_for: 0
+  stale_every: 0
+  crossed_every: 0
+  # Market source: ama = one AMA-shaped walk per instruments entry
+  # (CODE.SUFFIX, production normalizer + real L10 depth). Depth comes from
+  # the quotes themselves, so depth_levels below stays 0.
+  feed: ama
+  depth_levels: 0
+  depth_quantity: 0
+  depth_tick: 1
+# Trading-day boundary (local HH:MM).
+trading_day:
+  rollover: "00:01"
+# Instrument master: pins the allowlist (unknown symbols fail closed) and
+# drives tick/lot/band/identity checks in risk.
+instruments:
+  - id: 600000.SSE
+    exchange: sse
+    board: main
+    tick: 1
+    min_qty: 100
+    lot_step: 100
+    max_qty: 1000000
+    sell_odd_lot_only: true
+    market_orders_allowed: true
+    limit_down: 800
+    limit_up: 1200
+  - id: 000001.SZSE
+    exchange: szse
+    board: main
+    tick: 1
+    min_qty: 100
+    lot_step: 100
+    max_qty: 1000000
+    sell_odd_lot_only: true
+    market_orders_allowed: true
+    limit_down: 800
+    limit_up: 1200
+# Paper fidelity: opening inventory is settled (immediately sellable, cash
+# untouched); fees come from the dedicated table. Inventory names its owner:
+# the grids trade against account-level (passthrough) stock while the
+# rebalancer can only sell what is sellable inside its own basket.
+paper_sim:
+  starting_cash: 10000000
+  starting_positions:
+    - instrument: 600000.SSE
+      quantity: 10000
+      avg_cost: 1000
+    - instrument: 000001.SZSE
+      quantity: 10000
+      avg_cost: 1000
+    - instrument: 600000.SSE
+      quantity: 10000
+      avg_cost: 1000
+      strategy: grid-sse
+    - instrument: 000001.SZSE
+      quantity: 10000
+      avg_cost: 1000
+      strategy: grid-szse
+    - instrument: 600000.SSE
+      quantity: 4000
+      avg_cost: 1000
+      strategy: bal-multi
+    - instrument: 000001.SZSE
+      quantity: 4000
+      avg_cost: 1000
+      strategy: bal-multi
+  fee_file: fees-ashare.yaml
+# Disk retention (same defaults as paper.example.yaml).
+retention:
+  log_files: 20
+  ledger_rotate_mb: 64
+# Operator inbox (M11-4, optional, empty = disabled).
+# control:
+#   inbox: ../db/multi-control-inbox.jsonl
