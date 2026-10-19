@@ -1,8 +1,8 @@
-# STS — Quantitative Trading System
+# STS — Strategy Trading System
 
 ![CI](https://github.com/viviwu/STS/actions/workflows/ci.yml/badge.svg)
 
-一个面向多 Broker、多资产类别的事件驱动量化交易系统骨架（C++ 上限 C++17，当前单进程部署）。目标是让策略、执行算法、订单管理与风险控制共享统一领域模型，能够在历史回放、模拟撮合和实盘通道之间复用同一业务逻辑。
+STS（Strategy Trading System，策略交易系统）是一个面向多 Broker、多资产类别的事件驱动交易系统骨架（C++ 上限 C++17，当前单进程部署）。目标是让策略、执行算法、订单管理与风险控制共享统一领域模型，能够在历史回放、模拟撮合和实盘通道之间复用同一业务逻辑。
 
 > 当前状态：策略/执行可配、风控、启动恢复与换日结算均已落地；支持长跑演示、离线查询/重放、日志文件和 SQLite 投影（持仓 × 策略 × 日期）。PostgreSQL 投影由 `STS_ENABLE_PG` 门控，和默认后端遵循同一契约。默认构建提供完整 CTest 覆盖；真实 Broker 尚未接入，**不得用于实盘交易**。
 

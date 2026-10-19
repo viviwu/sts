@@ -2,7 +2,7 @@
 
 ## 项目边界
 
-- STS 是事件驱动交易系统（C++ 上限 C++17，当前单进程部署）；当前仅支持 paper/simulation，禁止将任何改动表述为可用于实盘。
+- STS（Strategy Trading System，策略交易系统）是事件驱动交易系统（C++ 上限 C++17，当前单进程部署）；当前仅支持 paper/simulation，禁止将任何改动表述为可用于实盘。
 - Broker SDK 和私有字段只能存在于 `adapters/`，并受 `STS_ENABLE_VENDOR_SDKS` 控制；`core`、`strategy`、`execution`、`oms`、`risk` 和 `sts_core` 不得引用它们。
 - `strategy` 只能生成 `OrderIntent`；`execution` 负责拆单；OMS 是唯一订单状态迁移点；每笔新单和撤单到达 `TradeApi` 前必须同步经过风控。
 - 热路径（行情 → 策略 → 执行 → 风控 → OMS → adapter）不得增加同步文件、数据库、网络 I/O 或无界等待。JSONL 是恢复权威，SQLite/PG 仅为可重建投影；超时表示结果未知，必须对账，不能当作失败。
