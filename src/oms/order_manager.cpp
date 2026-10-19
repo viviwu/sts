@@ -9,15 +9,15 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/oms/order_manager.hpp"
+#include "sts/oms/order_manager.hpp"
 
 #include <algorithm>
 #include <limits>
 #include <utility>
 
-#include "qts/persistence/ledger.hpp"
+#include "sts/persistence/ledger.hpp"
 
-namespace qts {
+namespace sts {
 namespace {
 
 const char* status_name(OrderStatus status) {
@@ -343,4 +343,4 @@ bool OrderManager::is_transition_allowed(OrderStatus from, OrderStatus target) n
   return false;
 }
 
-}  // namespace qts
+}  // namespace sts

@@ -9,9 +9,9 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/broker/ama_tick.hpp"
+#include "sts/broker/ama_tick.hpp"
 
-namespace qts {
+namespace sts {
 
 std::optional<Side> map_tick_order_side(int market_type, char side, char order_type) {
   if (market_type == 101) {
@@ -96,4 +96,4 @@ AmaTickResult AmaTickSequenceTracker::observe(int market_type, std::int32_t chan
 
 void AmaTickSequenceTracker::clear() { last_.clear(); }
 
-}  // namespace qts
+}  // namespace sts

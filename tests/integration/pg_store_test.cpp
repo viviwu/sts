@@ -9,11 +9,11 @@
   ******************************************************************************
   */
 // clang-format on
-// PG-gated test (QTS_ENABLE_PG): needs a live server with an empty
-// database. The conninfo comes from QTS_PG_TEST_CONNINFO only (never
+// PG-gated test (STS_ENABLE_PG): needs a live server with an empty
+// database. The conninfo comes from STS_PG_TEST_CONNINFO only (never
 // committed); unset means skip with exit 0 so untargeted builds stay
 // green. Each case resets the four tables for isolation.
-#include "qts/persistence/pg_store.hpp"
+#include "sts/persistence/pg_store.hpp"
 
 #include <libpq-fe.h>
 
@@ -24,16 +24,16 @@
 #include <string>
 #include <vector>
 
-#include "qts/broker/simulated_broker.hpp"
-#include "qts/market/quote_feed.hpp"
-#include "qts/oms/order_manager.hpp"
-#include "qts/persistence/event_store.hpp"
-#include "qts/persistence/sqlite_store.hpp"
+#include "sts/broker/simulated_broker.hpp"
+#include "sts/market/quote_feed.hpp"
+#include "sts/oms/order_manager.hpp"
+#include "sts/persistence/event_store.hpp"
+#include "sts/persistence/sqlite_store.hpp"
 
 namespace {
 
 std::string test_conninfo() {
-  const char* raw = std::getenv("QTS_PG_TEST_CONNINFO");
+  const char* raw = std::getenv("STS_PG_TEST_CONNINFO");
   return raw != nullptr ? raw : "";
 }
 
@@ -58,15 +58,15 @@ std::int64_t query_sum_fee(const std::string& conninfo) {
 }
 
 // One filled order through the real OMS path, recorded in-memory.
-std::vector<qts::LedgerEvent> one_fill_stream() {
+std::vector<sts::LedgerEvent> one_fill_stream() {
   static unsigned tag = 0;
-  qts::EventBus events;
-  qts::SimulatedBroker broker{events};
+  sts::EventBus events;
+  sts::SimulatedBroker broker{events};
   broker.set_reference_price("TEST", 1'000);
-  qts::RiskEngine risk{{10'000, 0, true}};
-  qts::InMemoryEventLedger ledger{};
-  qts::OrderManager oms{broker, risk, events, &ledger};
-  qts::OrderIntent intent{"pg-1-" + std::to_string(tag++), "paper", "test", "TEST", qts::Side::buy, qts::OrderType::limit, qts::TimeInForce::day, 100, 1'000};
+  sts::RiskEngine risk{{10'000, 0, true}};
+  sts::InMemoryEventLedger ledger{};
+  sts::OrderManager oms{broker, risk, events, &ledger};
+  sts::OrderIntent intent{"pg-1-" + std::to_string(tag++), "paper", "test", "TEST", sts::Side::buy, sts::OrderType::limit, sts::TimeInForce::day, 100, 1'000};
   intent.trace_id = intent.client_order_id;
   assert(oms.submit(intent));
   const auto stream = ledger.replay(1);
@@ -78,7 +78,7 @@ void pg_applies_idempotently(const std::string& conninfo) {
   reset_tables(conninfo);
   const auto stream = one_fill_stream();
   {
-    qts::PgEventStore store{conninfo};
+    sts::PgEventStore store{conninfo};
     assert(store.latest_event_id() == 0);
     for (const auto& event : stream) store.apply(event);
     const auto counts = store.counts();
@@ -93,7 +93,7 @@ void pg_applies_idempotently(const std::string& conninfo) {
     assert(store.latest_event_id() == stream.back().envelope.event_id);
   }
   {
-    qts::PgEventStore store{conninfo};
+    sts::PgEventStore store{conninfo};
     assert(store.latest_event_id() == stream.back().envelope.event_id);
     assert(store.counts().events == stream.size());
   }
@@ -105,12 +105,12 @@ void pg_watermark_resume_catches_up(const std::string& conninfo) {
   assert(stream.size() >= 2);
   const std::size_t split = stream.size() / 2;
   {
-    qts::PgEventStore store{conninfo};
+    sts::PgEventStore store{conninfo};
     for (std::size_t i = 0; i < split; ++i) store.apply(stream[i]);
     assert(store.latest_event_id() == stream[split - 1].envelope.event_id);
   }
   {
-    qts::PgEventStore store{conninfo};
+    sts::PgEventStore store{conninfo};
     const auto water = store.latest_event_id();
     std::size_t applied = 0;
     for (const auto& event : stream) {
@@ -129,14 +129,14 @@ void pg_factory_port_and_async_sink(const std::string& conninfo) {
   reset_tables(conninfo);
   const auto stream = one_fill_stream();
   {
-    std::unique_ptr<qts::EventStore> port = qts::open_event_store("", conninfo);
+    std::unique_ptr<sts::EventStore> port = sts::open_event_store("", conninfo);
     assert(port != nullptr && port->latest_event_id() == 0);
-    qts::AsyncEventSink sink{std::move(port)};
+    sts::AsyncEventSink sink{std::move(port)};
     for (const auto& event : stream) sink.push(event);
     sink.wait_empty();
     sink.shutdown();
   }
-  qts::PgEventStore store{conninfo};
+  sts::PgEventStore store{conninfo};
   assert(store.counts().events == stream.size());
   assert(store.counts().orders == 1);
   assert(store.strategy_order_counts().size() == 1);
@@ -146,18 +146,18 @@ void pg_factory_port_and_async_sink(const std::string& conninfo) {
 
 void pg_positions_split_by_strategy(const std::string& conninfo) {
   reset_tables(conninfo);
-  qts::EventBus events;
-  qts::SimulatedBroker broker{events};
-  qts::RiskEngine risk{{10'000, 0, true}};
-  qts::InMemoryEventLedger ledger{};
-  qts::OrderManager oms{broker, risk, events, &ledger};
+  sts::EventBus events;
+  sts::SimulatedBroker broker{events};
+  sts::RiskEngine risk{{10'000, 0, true}};
+  sts::InMemoryEventLedger ledger{};
+  sts::OrderManager oms{broker, risk, events, &ledger};
   oms.set_trade_date("2026-10-10");
   broker.set_reference_price("TEST", 1000);
-  auto buy_s1 = qts::OrderIntent{"pg-pos-1", "paper", "s1", "TEST", qts::Side::buy, qts::OrderType::limit, qts::TimeInForce::day, 100, 1000};
+  auto buy_s1 = sts::OrderIntent{"pg-pos-1", "paper", "s1", "TEST", sts::Side::buy, sts::OrderType::limit, sts::TimeInForce::day, 100, 1000};
   buy_s1.trace_id = "pg-pos-1";
-  auto buy_s2 = qts::OrderIntent{"pg-pos-2", "paper", "s2", "TEST", qts::Side::buy, qts::OrderType::limit, qts::TimeInForce::day, 100, 2000};
+  auto buy_s2 = sts::OrderIntent{"pg-pos-2", "paper", "s2", "TEST", sts::Side::buy, sts::OrderType::limit, sts::TimeInForce::day, 100, 2000};
   buy_s2.trace_id = "pg-pos-2";
-  auto sell_s1 = qts::OrderIntent{"pg-pos-3", "paper", "s1", "TEST", qts::Side::sell, qts::OrderType::limit, qts::TimeInForce::day, 100, 1500};
+  auto sell_s1 = sts::OrderIntent{"pg-pos-3", "paper", "s1", "TEST", sts::Side::sell, sts::OrderType::limit, sts::TimeInForce::day, 100, 1500};
   sell_s1.trace_id = "pg-pos-3";
   assert(oms.submit(buy_s1));
   broker.set_reference_price("TEST", 2000);
@@ -165,7 +165,7 @@ void pg_positions_split_by_strategy(const std::string& conninfo) {
   broker.set_reference_price("TEST", 1500);
   assert(oms.submit(sell_s1));
   {
-    qts::PgEventStore store{conninfo};
+    sts::PgEventStore store{conninfo};
     for (auto event : ledger.replay(1)) store.apply(event);
     const auto rows = store.positions();
     assert(rows.size() == 2);
@@ -179,7 +179,7 @@ void pg_positions_split_by_strategy(const std::string& conninfo) {
   }
   // Reopen rebuilds the books from the events payloads (crash-gap heal).
   {
-    qts::PgEventStore store{conninfo};
+    sts::PgEventStore store{conninfo};
     const auto rows = store.positions();
     assert(rows.size() == 2 && rows[0].realized_pnl == 50'000 && rows[1].quantity == 100);
   }
@@ -196,25 +196,25 @@ void pg_fee_and_funding(const std::string& conninfo) {
     if (event.snapshot.last_quantity > 0) ++fills;
   }
   {
-    qts::PgEventStore store{conninfo};
+    sts::PgEventStore store{conninfo};
     for (const auto& event : stream) store.apply(event);
   }
   assert(query_sum_fee(conninfo) == fills * 1234);
 
-  qts::LedgerEvent cash{};
-  cash.type = qts::LedgerEventType::funding_deposited;
+  sts::LedgerEvent cash{};
+  cash.type = sts::LedgerEventType::funding_deposited;
   cash.envelope.event_id = 1'000'001;
   cash.envelope.trace_id = "funding";
   cash.funding.cash = 10'000'000;
-  qts::LedgerEvent deposit{};
-  deposit.type = qts::LedgerEventType::funding_deposited;
+  sts::LedgerEvent deposit{};
+  deposit.type = sts::LedgerEventType::funding_deposited;
   deposit.envelope.event_id = 1'000'002;
   deposit.envelope.trace_id = "funding";
   deposit.funding.instrument = "TEST";
   deposit.funding.quantity = 10'000;
   deposit.funding.average_cost = 1'000;
   {
-    qts::PgEventStore store{conninfo};
+    sts::PgEventStore store{conninfo};
     store.apply(cash);
     store.apply(deposit);
     const auto rows = store.positions();
@@ -235,26 +235,26 @@ void pg_fee_and_funding(const std::string& conninfo) {
 // SQLite and PostgreSQL (counts, strategy split, positions).
 void pg_matches_sqlite(const std::string& conninfo) {
   reset_tables(conninfo);
-  qts::EventBus events;
-  qts::SimulatedBroker broker{events};
-  qts::RiskEngine risk{{10'000, 0, true}};
-  qts::InMemoryEventLedger ledger{};
-  qts::OrderManager oms{broker, risk, events, &ledger};
+  sts::EventBus events;
+  sts::SimulatedBroker broker{events};
+  sts::RiskEngine risk{{10'000, 0, true}};
+  sts::InMemoryEventLedger ledger{};
+  sts::OrderManager oms{broker, risk, events, &ledger};
   broker.set_reference_price("TEST", 1000);
-  auto buy = qts::OrderIntent{"pg-x-1", "paper", "s1", "TEST", qts::Side::buy, qts::OrderType::limit, qts::TimeInForce::day, 100, 1000};
+  auto buy = sts::OrderIntent{"pg-x-1", "paper", "s1", "TEST", sts::Side::buy, sts::OrderType::limit, sts::TimeInForce::day, 100, 1000};
   buy.trace_id = "pg-x-1";
-  auto sell = qts::OrderIntent{"pg-x-2", "paper", "s1", "TEST", qts::Side::sell, qts::OrderType::limit, qts::TimeInForce::day, 50, 1500};
+  auto sell = sts::OrderIntent{"pg-x-2", "paper", "s1", "TEST", sts::Side::sell, sts::OrderType::limit, sts::TimeInForce::day, 50, 1500};
   sell.trace_id = "pg-x-2";
   assert(oms.submit(buy));
   broker.set_reference_price("TEST", 1500);
   assert(oms.submit(sell));
   const auto stream = ledger.replay(1);
 
-  const auto path = std::filesystem::temp_directory_path() / "qts-pg-x.db";
+  const auto path = std::filesystem::temp_directory_path() / "sts-pg-x.db";
   std::error_code ec;
   std::filesystem::remove(path, ec);
-  qts::SqliteEventStore lite{path.string()};
-  qts::PgEventStore pg{conninfo};
+  sts::SqliteEventStore lite{path.string()};
+  sts::PgEventStore pg{conninfo};
   for (const auto& event : stream) {
     lite.apply(event);
     pg.apply(event);
@@ -282,7 +282,7 @@ void pg_matches_sqlite(const std::string& conninfo) {
 int main() {
   const std::string conninfo = test_conninfo();
   if (conninfo.empty()) {
-    std::cout << "qts_test_pg skipped: QTS_PG_TEST_CONNINFO is not set (needs an empty database).\n";
+    std::cout << "sts_test_pg skipped: STS_PG_TEST_CONNINFO is not set (needs an empty database).\n";
     return 0;
   }
   pg_applies_idempotently(conninfo);
@@ -291,6 +291,6 @@ int main() {
   pg_positions_split_by_strategy(conninfo);
   pg_fee_and_funding(conninfo);
   pg_matches_sqlite(conninfo);
-  std::cout << "qts_test_pg: all conformance cases passed.\n";
+  std::cout << "sts_test_pg: all conformance cases passed.\n";
   return 0;
 }

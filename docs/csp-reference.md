@@ -7,7 +7,7 @@
 
 ## 1. 采纳项
 
-| CSP 定义 | 含义 | QTS 落地 | 状态 |
+| CSP 定义 | 含义 | STS 落地 | 状态 |
 | --- | --- | --- | --- |
 | `biz_order_id`（柜台委托号，区别于 `cl_order_id` 本地 / `sys_order_id` 系统） | 三级委托 ID：撤单要原单柜台号（QuantAPI `OrigClOrdNo`），重启后对账靠它 | `ExecutionReport.broker_order_id`（append，OMS 不解释、适配器专用） | 已落地（ADR-032） |
 | `reject_reason`(int) + `reject_msg`(string) | 结构化拒单，告警按码分类 | `ExecutionReport.reject_code`（0=无）+ 既有 `reason` 文本 | 已落地（ADR-032） |
@@ -23,10 +23,10 @@
 | CSP 做法 | 不采纳原因 |
 | --- | --- |
 | `PriceType`/`AmountType` = `double` | 守 ADR-003 定点整数（`Price`/`Quantity` 为 int64，避免浮点误差） |
-| `typedef int32_t OrderTypeType` 等魔法整型枚举 | QTS 用 `enum class` 类型安全；CSP 该风格源自 C API 兼容 |
+| `typedef int32_t OrderTypeType` 等魔法整型枚举 | STS 用 `enum class` 类型安全；CSP 该风格源自 C API 兼容 |
 | `DateTimeType`（YYYYMMDDHHMMSSsss 整数） | 守 ADR-010 纳秒 `Timestamp`；交易所整数时间在适配器侧解析（AMA `orig_time` 即如此） |
 | `pos_effect` 开平标识 | A 股现货无开平概念（期货才有）；两融由 `TradingBusiness` 覆盖 |
-| Request/Reply 固定数组（`kMaxAccountNoCnt`） | QTS 端口用 handler + `std::vector` |
+| Request/Reply 固定数组（`kMaxAccountNoCnt`） | STS 端口用 handler + `std::vector` |
 | `cl_term_id` 终端指纹进领域类型 | 归配置层：QuantAPI `kClientFeatureCode`（见 `archforce.md`） |
 
 ## 3. channel 模块对照（broker 对接参考，2026-10-01）
@@ -34,7 +34,7 @@
 维护者提供的参考实现：`/Users/wuxw/Workspace/csp/code/csp/channel`（KCBP/KDVIP 柜台通道，
 `TradeChannelApi` 请求面 + `TradeChannelSpi` 回调面）。M7-2c QuantAPI 适配器对照结论：
 
-| channel 模块做法 | QTS 对应 | 取舍 |
+| channel 模块做法 | STS 对应 | 取舍 |
 | --- | --- | --- |
 | `RequstStuff` 关联表（req_id → 原始请求 + 归属 API） | `inflight_req_`（request_id → `client_order_id`）+ sidecar `seq/map` 持久化 | 采纳并加强：跨重启归因（CSP 心跳断线即清表、无持久化） |
 | 装饰 SPI 先归因/补全再转发用户 SPI | vendor 回调 → 值 fixture → `Impl::on_*` → 事件队列 | 同构（fixture 即装饰层，且是 seam 注入点） |
@@ -44,7 +44,7 @@
 | 固定间隔重连且连接失败即停、无退避 | M7-2 不做自动重连（运维 `start/stop` 重启），断连由回调计数 + 查询补单兜底 | 刻意差异；后续若引入重连必须带退避与上限 |
 | 未知 `biz_order_id` 推送只 LOG 后丢弃 | 丢弃但计数（`unattributed_rtns`/`status_unknown_drops`）；RTN 先于 ack 到达先暂存、ack 绑定后 flush | 加强（可观测性 + 乱序兜底） |
 | 测试靠活券商按委托数量约定驱动 + `#define private public` | vendor 回调全转值 fixture，`inject_*` seam 白盒注入（不改访问级） | 加强（CI 与 Linux 环境均可离线复现） |
-| 整个 channel 模块整体移植进 QTS | 逐家 `adapters/<vendor>` + 逐函数复用纯逻辑（分页驱动/`CastOrderPrice`/状态表） | **不移植**（2026-10-01 维护者确认，"抄逻辑不抄架构"）：依赖树（boost/Jamfile）与 FetchContent 钉版本冲突、SPI≠端口须 shim、反例清单需修回、双架构并存；评估全文见 `resources/broker-mappings/kdvip.md` §7，推翻需 ADR |
+| 整个 channel 模块整体移植进 STS | 逐家 `adapters/<vendor>` + 逐函数复用纯逻辑（分页驱动/`CastOrderPrice`/状态表） | **不移植**（2026-10-01 维护者确认，"抄逻辑不抄架构"）：依赖树（boost/Jamfile）与 FetchContent 钉版本冲突、SPI≠端口须 shim、反例清单需修回、双架构并存；评估全文见 `resources/broker-mappings/kdvip.md` §7，推翻需 ADR |
 
 ## 4. 关联
 

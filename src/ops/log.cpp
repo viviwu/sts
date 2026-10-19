@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/ops/log.hpp"
+#include "sts/ops/log.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -34,7 +34,7 @@
   #include <unistd.h>
 #endif
 
-namespace qts::log {
+namespace sts::log {
 namespace {
 
 std::atomic<int>& level_storage() {
@@ -296,4 +296,4 @@ void Logger::emit(Level emit_level, const std::string& component, const std::str
   file_.flush();
 }
 
-}  // namespace qts::log
+}  // namespace sts::log

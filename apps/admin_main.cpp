@@ -3,7 +3,7 @@
   ******************************************************************************
   * @file           : admin_main.cpp
   * @author         : vivi wu
-  * @brief          : qts_admin query CLI: offline file reads plus the live gateway client.
+  * @brief          : sts_admin query CLI: offline file reads plus the live gateway client.
   * @version        : 0.1.0
   * @date           : 02/10/26
   ******************************************************************************
@@ -20,30 +20,30 @@
 #include <vector>
 
 #include "nlohmann/json.hpp"
-#include "qts/gateway/gateway_transport.hpp"
-#include "qts/ops/admin_socket.hpp"
-#include "qts/ops/admin_view.hpp"
-#include "qts/ops/control.hpp"
-#include "qts/persistence/event_store.hpp"
-#include "qts/persistence/file_ledger.hpp"
+#include "sts/gateway/gateway_transport.hpp"
+#include "sts/ops/admin_socket.hpp"
+#include "sts/ops/admin_view.hpp"
+#include "sts/ops/control.hpp"
+#include "sts/persistence/event_store.hpp"
+#include "sts/persistence/file_ledger.hpp"
 
 namespace {
 
-std::string status_name(qts::OrderStatus status) {
+std::string status_name(sts::OrderStatus status) {
   switch (status) {
-    case qts::OrderStatus::pending_new:
+    case sts::OrderStatus::pending_new:
       return "pending_new";
-    case qts::OrderStatus::live:
+    case sts::OrderStatus::live:
       return "live";
-    case qts::OrderStatus::partially_filled:
+    case sts::OrderStatus::partially_filled:
       return "partially_filled";
-    case qts::OrderStatus::filled:
+    case sts::OrderStatus::filled:
       return "filled";
-    case qts::OrderStatus::pending_cancel:
+    case sts::OrderStatus::pending_cancel:
       return "pending_cancel";
-    case qts::OrderStatus::cancelled:
+    case sts::OrderStatus::cancelled:
       return "cancelled";
-    case qts::OrderStatus::rejected:
+    case sts::OrderStatus::rejected:
       return "rejected";
   }
   return "unknown";
@@ -62,8 +62,8 @@ struct Options {
   std::string inbox;
   std::string id;
   std::vector<std::string> approve_channels;
-  qts::Quantity quantity{0};
-  qts::Price price{0};
+  sts::Quantity quantity{0};
+  sts::Price price{0};
   std::string account;
   std::string instrument;
   std::string side;
@@ -81,13 +81,13 @@ struct Options {
   int cash_dirty{0};
   int position_dirty{0};
   std::string settle_note;
-  qts::Price lower{0};
-  qts::Price upper{0};
+  sts::Price lower{0};
+  sts::Price upper{0};
   int grids{0};
-  qts::Price start{0};
-  qts::Quantity stock{0};
-  qts::Price stock_avg{0};
-  qts::Price starting_cash{1'000'000};
+  sts::Price start{0};
+  sts::Quantity stock{0};
+  sts::Price stock_avg{0};
+  sts::Price starting_cash{1'000'000};
   std::size_t lines{10};
   // P2 live auth + fills paging.
   std::string live_account;
@@ -236,7 +236,7 @@ bool parse_args(int argc, char** argv, Options& out) {
 
 void usage() {
   std::cerr
-      << "usage: qts_admin <orders|positions|tail|reconcile|db|state|trace|send|approve>\n"
+      << "usage: sts_admin <orders|positions|tail|reconcile|db|state|trace|send|approve>\n"
       << "  [--ledger FILE] [--sqlite FILE] [--pg-env NAME] [--state-file FILE] [--socket PATH] [--cash N] [-n N] [id]\n"
       << "  state shows the server's live state: --socket PATH queries the\n"
       << "  running server, --state-file FILE reads its snapshot file.\n"
@@ -268,15 +268,15 @@ void usage() {
 
 // M9-2: offline reader over the append-only JSONL file. Safe to run while
 // the gateway appends: FileEventLedger replays the snapshot at open.
-std::vector<qts::LedgerEvent> load_ledger(const std::string& path) {
+std::vector<sts::LedgerEvent> load_ledger(const std::string& path) {
   if (path.empty()) throw std::runtime_error("this command needs --ledger FILE");
-  qts::FileEventLedger ledger{path};
+  sts::FileEventLedger ledger{path};
   return ledger.replay(1);
 }
 
 int run_orders(const Options& opts) {
   const auto events = load_ledger(opts.ledger);
-  const auto views = qts::admin::summarize_orders(events);
+  const auto views = sts::admin::summarize_orders(events);
   for (const auto& view : views) {
     std::cout << view.client_order_id << " status=" << status_name(view.status) << " cum=" << view.cumulative_quantity << " version=" << view.version << " event=" << view.last_event_id << '\n';
   }
@@ -286,7 +286,7 @@ int run_orders(const Options& opts) {
 
 int run_positions(const Options& opts) {
   const auto events = load_ledger(opts.ledger);
-  qts::Portfolio book = qts::admin::rebuild_positions(events, opts.starting_cash);
+  sts::Portfolio book = sts::admin::rebuild_positions(events, opts.starting_cash);
   for (const auto& entry : book.all_positions()) {
     std::cout << entry.second.instrument_id << " total=" << entry.second.total << " sellable=" << entry.second.sellable << " avg_cost=" << entry.second.average_cost << '\n';
   }
@@ -301,7 +301,7 @@ int run_tail(const Options& opts) {
   for (std::size_t i = total - shown; i < total; ++i) {
     const auto& event = events[i];
     const auto client = event.snapshot.client_order_id.empty() ? event.intent.client_order_id : event.snapshot.client_order_id;
-    std::cout << event.envelope.event_id << " " << qts::event_type_name(event.type) << " " << client << " " << status_name(event.snapshot.status) << '\n';
+    std::cout << event.envelope.event_id << " " << sts::event_type_name(event.type) << " " << client << " " << status_name(event.snapshot.status) << '\n';
   }
   std::cout << "tail: shown=" << shown << " ledger_events=" << total << '\n';
   return 0;
@@ -309,7 +309,7 @@ int run_tail(const Options& opts) {
 
 int run_reconcile(const Options& opts) {
   const auto events = load_ledger(opts.ledger);
-  const auto open = qts::admin::open_orders(events);
+  const auto open = sts::admin::open_orders(events);
   for (const auto& view : open) {
     std::cout << "open " << view.client_order_id << " status=" << status_name(view.status) << " cum=" << view.cumulative_quantity << '\n';
   }
@@ -331,7 +331,7 @@ int run_db(const Options& opts) {
     pg_conninfo = resolved;
   }
   if (opts.sqlite.empty() && pg_conninfo.empty()) throw std::runtime_error("db needs --sqlite FILE or --pg-env NAME");
-  const std::unique_ptr<qts::EventStore> store = qts::open_event_store(opts.sqlite, pg_conninfo);
+  const std::unique_ptr<sts::EventStore> store = sts::open_event_store(opts.sqlite, pg_conninfo);
   const auto counts = store->counts();
   std::cout << "db: watermark=" << store->latest_event_id() << " events=" << counts.events << " orders=" << counts.orders << " executions=" << counts.executions << '\n';
   for (const auto& entry : store->strategy_order_counts()) {
@@ -348,7 +348,7 @@ int run_state(const Options& opts) {
   nlohmann::json state;
   if (!opts.socket.empty()) {
     try {
-      state = nlohmann::json::parse(qts::query_live_state(opts.socket));
+      state = nlohmann::json::parse(sts::query_live_state(opts.socket));
     } catch (const nlohmann::json::exception& e) {
       throw std::runtime_error("bad state reply from " + opts.socket + ": " + e.what());
     }
@@ -401,7 +401,7 @@ int run_approve(const Options& opts) {
 int run_send(const Options& opts) {
   if (opts.inbox.empty()) throw std::runtime_error("send needs --inbox FILE");
   if (opts.sub.empty()) throw std::runtime_error("send needs an operator verb (cancel, cancel-all, block-strategy, halt, replace, ...)");
-  qts::control::ControlCommand command{};
+  sts::control::ControlCommand command{};
   if (opts.sub == "cancel-all") {
     command.name = "cancel_all";
   } else if (opts.sub == "block-strategy") {
@@ -445,10 +445,10 @@ int run_send(const Options& opts) {
   command.quantity = opts.quantity;
   command.price = opts.price;
   // Validate exactly what the server will parse: typos fail here, loudly.
-  const std::string line = qts::control::format_command(command);
-  qts::control::ControlCommand checked{};
+  const std::string line = sts::control::format_command(command);
+  sts::control::ControlCommand checked{};
   std::string error;
-  if (!qts::control::parse_command(line, checked, error)) throw std::runtime_error(std::string{"send refused: "} + error);
+  if (!sts::control::parse_command(line, checked, error)) throw std::runtime_error(std::string{"send refused: "} + error);
   std::ofstream out{opts.inbox, std::ios::app};
   if (!out) throw std::runtime_error("cannot open inbox: " + opts.inbox);
   out << line << '\n';
@@ -462,7 +462,7 @@ int run_send(const Options& opts) {
 // or TCP endpoint. The password travels by env name only (never argv/logs),
 // same discipline as db --pg-env. Each invocation logs in (when --account-id
 // is set), runs one verb (or streams pushes for watch), then logs out.
-std::unique_ptr<qts::gateway::GatewayClient> dial_live(const Options& opts) {
+std::unique_ptr<sts::gateway::GatewayClient> dial_live(const Options& opts) {
   if (!opts.tcp.empty()) {
     const std::size_t mark = opts.tcp.rfind(':');
     if (mark == std::string::npos || mark == 0 || mark + 1 >= opts.tcp.size()) throw std::runtime_error("live --tcp must be host:port");
@@ -473,13 +473,13 @@ std::unique_ptr<qts::gateway::GatewayClient> dial_live(const Options& opts) {
       throw std::runtime_error("live --tcp port must be numeric");
     }
     if (port == 0 || port > 65535) throw std::runtime_error("live --tcp port out of range");
-    return std::make_unique<qts::gateway::GatewayClient>(opts.tcp.substr(0, mark), static_cast<std::uint16_t>(port));
+    return std::make_unique<sts::gateway::GatewayClient>(opts.tcp.substr(0, mark), static_cast<std::uint16_t>(port));
   }
   if (opts.socket.empty()) throw std::runtime_error("live needs --socket PATH or --tcp host:port (gateway.socket/bind)");
-  return std::make_unique<qts::gateway::GatewayClient>(opts.socket);
+  return std::make_unique<sts::gateway::GatewayClient>(opts.socket);
 }
 
-void live_login(qts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts) {
+void live_login(sts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts) {
   if (opts.live_account.empty()) return;
   if (opts.credential_env.empty()) throw std::runtime_error("live --account-id needs --credential-env NAME (password by env, never argv)");
   const char* password = std::getenv(opts.credential_env.c_str());
@@ -494,7 +494,7 @@ void live_login(qts::gateway::GatewayClient& client, std::int64_t& req, const Op
   if (!reply.value("ok", false)) throw std::runtime_error("live login refused: " + reply.value("message", std::string{"?"}));
 }
 
-void live_logout(qts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts) {
+void live_logout(sts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts) {
   if (opts.live_account.empty()) return;
   nlohmann::json body = nlohmann::json::object();
   body["req"] = ++req;
@@ -540,7 +540,7 @@ nlohmann::json live_request_body(const Options& opts) {
   }
   if (verb == "positions") {
     body["op"] = "positions_for";
-    body["strategy"] = opts.strategy.empty() ? std::string{qts::kPassthroughStrategy} : opts.strategy;
+    body["strategy"] = opts.strategy.empty() ? std::string{sts::kPassthroughStrategy} : opts.strategy;
     body["account"] = opts.account;
     return body;
   }
@@ -612,19 +612,19 @@ nlohmann::json live_request_body(const Options& opts) {
 }
 
 void print_settle_position(const nlohmann::json& position) {
-  const bool dirty = position.value("qts_total", 0) != position.value("broker_total", 0) || position.value("qts_sellable", 0) != position.value("broker_sellable", 0) ||
-                     position.value("qts_avg", 0) != position.value("broker_avg", 0);
+  const bool dirty = position.value("sts_total", 0) != position.value("broker_total", 0) || position.value("sts_sellable", 0) != position.value("broker_sellable", 0) ||
+                     position.value("sts_avg", 0) != position.value("broker_avg", 0);
   if (!dirty) return;
-  std::cout << "settle-position-dirty: " << position.value("instrument", std::string{"?"}) << " qts=" << position.value("qts_total", 0) << "/" << position.value("qts_sellable", 0) << "/"
-            << position.value("qts_avg", 0) << " broker=" << position.value("broker_total", 0) << "/" << position.value("broker_sellable", 0) << "/" << position.value("broker_avg", 0) << '\n';
+  std::cout << "settle-position-dirty: " << position.value("instrument", std::string{"?"}) << " sts=" << position.value("sts_total", 0) << "/" << position.value("sts_sellable", 0) << "/"
+            << position.value("sts_avg", 0) << " broker=" << position.value("broker_total", 0) << "/" << position.value("broker_sellable", 0) << "/" << position.value("broker_avg", 0) << '\n';
 }
 
 void print_settle_account(const nlohmann::json& row) {
   std::cout << "settle-account: " << row.value("account", std::string{"?"}) << " clean=" << (row.value("clean", false) ? "yes" : "no") << " cash_dirty=" << row.value("cash_dirty", 0)
             << " position_dirty=" << row.value("position_dirty", 0) << " fees=" << row.value("fees", 0) << '\n';
   for (const auto& cash : row.value("cash", nlohmann::json::array())) {
-    if (!cash.value("comparable", false) || cash.value("qts", 0) == cash.value("broker", 0)) continue;
-    std::cout << "settle-cash-dirty: " << cash.value("field", std::string{"?"}) << " qts=" << cash.value("qts", 0) << " broker=" << cash.value("broker", 0) << '\n';
+    if (!cash.value("comparable", false) || cash.value("sts", 0) == cash.value("broker", 0)) continue;
+    std::cout << "settle-cash-dirty: " << cash.value("field", std::string{"?"}) << " sts=" << cash.value("sts", 0) << " broker=" << cash.value("broker", 0) << '\n';
   }
   for (const auto& position : row.value("positions", nlohmann::json::array())) print_settle_position(position);
 }
@@ -675,8 +675,8 @@ void print_live_reply(const std::string& verb, const nlohmann::json& reply) {
   }
 }
 
-nlohmann::json live_roundtrip(qts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts, nlohmann::json body);
-void run_live_watch(qts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts);
+nlohmann::json live_roundtrip(sts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts, nlohmann::json body);
+void run_live_watch(sts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts);
 
 int run_live(const Options& opts) {
   if (!opts.socket.empty() && !opts.tcp.empty()) throw std::runtime_error("live takes either --socket PATH or --tcp host:port");
@@ -705,7 +705,7 @@ int run_live(const Options& opts) {
   return 0;
 }
 
-nlohmann::json live_roundtrip(qts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts, nlohmann::json body) {
+nlohmann::json live_roundtrip(sts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts, nlohmann::json body) {
   body["req"] = ++req;
   client.send(body.dump());
   const std::string endpoint = opts.tcp.empty() ? opts.socket : opts.tcp;
@@ -721,7 +721,7 @@ nlohmann::json live_roundtrip(qts::gateway::GatewayClient& client, std::int64_t&
   throw std::runtime_error("live: req mismatch from " + endpoint);
 }
 
-void run_live_watch(qts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts) {
+void run_live_watch(sts::gateway::GatewayClient& client, std::int64_t& req, const Options& opts) {
   if (opts.id != "quotes" && opts.id != "reports" && opts.id != "strategies") throw std::runtime_error("live watch needs --id quotes|reports|strategies");
   nlohmann::json subscribe = nlohmann::json::object();
   subscribe["op"] = "subscribe_" + opts.id;
@@ -745,7 +745,7 @@ void run_live_watch(qts::gateway::GatewayClient& client, std::int64_t& req, cons
 
 }  // namespace
 
-// qts_admin (M9-2, ADR-034; live client since M12-3): read-only projector
+// sts_admin (M9-2, ADR-034; live client since M12-3): read-only projector
 // over ledger/SQLite files (zero IPC), plus a one-shot client for the
 // running gateway (live ... over the gateway socket or TCP, login when the
 // server has operators).
@@ -766,7 +766,7 @@ int main(int argc, char** argv) {
     if (opts.command == "approve") return run_approve(opts);
     if (opts.command == "live") return run_live(opts);
   } catch (const std::exception& e) {
-    std::cerr << "qts_admin: " << e.what() << '\n';
+    std::cerr << "sts_admin: " << e.what() << '\n';
     return 2;
   }
   usage();

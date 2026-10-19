@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/broker/ama_snapshot.hpp"
+#include "sts/broker/ama_snapshot.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -17,13 +17,13 @@
 
 namespace {
 
-qts::AmaSnapshotFixture make_snapshot() {
-  qts::AmaSnapshotFixture snap{};
+sts::AmaSnapshotFixture make_snapshot() {
+  sts::AmaSnapshotFixture snap{};
   snap.market_type = 101;
   snap.security_code = "600000";
   snap.orig_time = 20260928093000000;  // 2026-09-28 09:30:00.000
   snap.trading_phase_code = "T";
-  for (std::size_t i = 0; i < qts::AmaSnapshotFixture::kLevels; ++i) {
+  for (std::size_t i = 0; i < sts::AmaSnapshotFixture::kLevels; ++i) {
     snap.bid_price[i] = 1'000'000'000 - static_cast<std::int64_t>(i) * 100'000;  // 1000.00 - i*0.01
     snap.bid_volume[i] = (static_cast<std::int64_t>(i) + 1) * 100 * 100;         // (i+1) lots in Qty2
     snap.offer_price[i] = 1'000'100'000 + static_cast<std::int64_t>(i) * 100'000;
@@ -38,15 +38,15 @@ qts::AmaSnapshotFixture make_snapshot() {
   return snap;
 }
 
-qts::Timestamp make_now() { return qts::Timestamp{std::chrono::seconds{1'790'586'600}}; }  // ~2026-09-28
+sts::Timestamp make_now() { return sts::Timestamp{std::chrono::seconds{1'790'586'600}}; }  // ~2026-09-28
 
 void sse_happy_path() {
-  qts::AmaSnapshotNormalizer normalizer;
-  const qts::Timestamp now = make_now();
+  sts::AmaSnapshotNormalizer normalizer;
+  const sts::Timestamp now = make_now();
   const auto event = normalizer.normalize(make_snapshot(), now - std::chrono::seconds{1}, now);
   assert(event.has_value());
   assert(event->instrument_id == "600000.SSE");
-  assert(event->exchange == qts::Exchange::sse);
+  assert(event->exchange == sts::Exchange::sse);
   assert(event->bid_price == 1'000'0000);
   assert(event->bid_quantity == 100);
   assert(event->ask_price == 1'000'1000);
@@ -60,16 +60,16 @@ void sse_happy_path() {
   assert(event->bid_levels[9].price == 9'991'000);
   assert(event->ask_levels[9].price == 10'010'000);
   assert(event->sequence == 1);
-  assert(event->quality == qts::QuoteQuality::valid);
-  assert(event->market_phase == qts::MarketPhase::continuous);
+  assert(event->quality == sts::QuoteQuality::valid);
+  assert(event->market_phase == sts::MarketPhase::continuous);
   assert(event->source_message_id == "101:600000:20260928093000000");
   // 2026-09-28 09:30:00.000 treated as UTC civil (vendor Beijing wall time).
-  assert(event->exchange_time == qts::Timestamp{std::chrono::nanoseconds{1'790'587'800'000'000'000}});
+  assert(event->exchange_time == sts::Timestamp{std::chrono::nanoseconds{1'790'587'800'000'000'000}});
 }
 
 void szse_phase_and_bse_market() {
-  qts::AmaSnapshotNormalizer normalizer;
-  const qts::Timestamp now = make_now();
+  sts::AmaSnapshotNormalizer normalizer;
+  const sts::Timestamp now = make_now();
   auto shenzhen = make_snapshot();
   shenzhen.market_type = 102;
   shenzhen.security_code = "000001";
@@ -77,8 +77,8 @@ void szse_phase_and_bse_market() {
   const auto sz = normalizer.normalize(shenzhen, now - std::chrono::seconds{1}, now);
   assert(sz.has_value());
   assert(sz->instrument_id == "000001.SZSE");
-  assert(sz->exchange == qts::Exchange::szse);
-  assert(sz->market_phase == qts::MarketPhase::opening_auction);
+  assert(sz->exchange == sts::Exchange::szse);
+  assert(sz->market_phase == sts::MarketPhase::opening_auction);
 
   auto beijing = make_snapshot();
   beijing.market_type = 2;  // kNEEQ, not the ATP trade id 104
@@ -86,35 +86,35 @@ void szse_phase_and_bse_market() {
   const auto bj = normalizer.normalize(beijing, now - std::chrono::seconds{1}, now);
   assert(bj.has_value());
   assert(bj->instrument_id == "920000.BSE");
-  assert(bj->exchange == qts::Exchange::bse);
+  assert(bj->exchange == sts::Exchange::bse);
 }
 
 void phase_table_spot_checks() {
-  qts::AmaSnapshotNormalizer normalizer;
-  const qts::Timestamp now = make_now();
+  sts::AmaSnapshotNormalizer normalizer;
+  const sts::Timestamp now = make_now();
   auto snap = make_snapshot();
   snap.market_type = 101;
   snap.trading_phase_code = "C";
-  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == qts::MarketPhase::opening_auction);
+  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == sts::MarketPhase::opening_auction);
   snap.trading_phase_code = "U";
-  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == qts::MarketPhase::closing_auction);
+  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == sts::MarketPhase::closing_auction);
   snap.trading_phase_code = "P";
-  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == qts::MarketPhase::halted);
+  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == sts::MarketPhase::halted);
   snap.trading_phase_code = "E";
-  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == qts::MarketPhase::closed);
+  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == sts::MarketPhase::closed);
   snap.market_type = 102;
   snap.trading_phase_code = "A";
-  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == qts::MarketPhase::after_hours);
+  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == sts::MarketPhase::after_hours);
   snap.trading_phase_code = "H";
-  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == qts::MarketPhase::halted);
+  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == sts::MarketPhase::halted);
   snap.trading_phase_code = "";
-  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == qts::MarketPhase::unknown);
+  assert(normalizer.normalize(snap, now - std::chrono::seconds{1}, now)->market_phase == sts::MarketPhase::unknown);
 }
 
 void fail_closed_inputs() {
-  qts::AmaSnapshotNormalizer normalizer;
-  const qts::Timestamp now = make_now();
-  const qts::Timestamp receive = now - std::chrono::seconds{1};
+  sts::AmaSnapshotNormalizer normalizer;
+  const sts::Timestamp now = make_now();
+  const sts::Timestamp receive = now - std::chrono::seconds{1};
   auto snap = make_snapshot();
 
   auto hkex = snap;
@@ -158,8 +158,8 @@ void fail_closed_inputs() {
 }
 
 void precision_truncation() {
-  qts::AmaSnapshotNormalizer normalizer;
-  const qts::Timestamp now = make_now();
+  sts::AmaSnapshotNormalizer normalizer;
+  const sts::Timestamp now = make_now();
   auto snap = make_snapshot();
   snap.bid_price[0] = 1'000'000'001;  // Price6 not divisible by 100: truncate
   snap.bid_volume[0] = 150;           // 1.5 shares: truncate to 1
@@ -172,9 +172,9 @@ void precision_truncation() {
 }
 
 void sequence_monotonic_per_instrument() {
-  qts::AmaSnapshotNormalizer normalizer;
-  const qts::Timestamp now = make_now();
-  const qts::Timestamp receive = now - std::chrono::seconds{1};
+  sts::AmaSnapshotNormalizer normalizer;
+  const sts::Timestamp now = make_now();
+  const sts::Timestamp receive = now - std::chrono::seconds{1};
   auto snap = make_snapshot();
   assert(normalizer.normalize(snap, receive, now)->sequence == 1);
   assert(normalizer.normalize(snap, receive, now)->sequence == 2);
@@ -191,32 +191,32 @@ void sequence_monotonic_per_instrument() {
 }
 
 void quality_stale_future_crossed() {
-  qts::AmaSnapshotNormalizer normalizer;
-  const qts::Timestamp now = make_now();
+  sts::AmaSnapshotNormalizer normalizer;
+  const sts::Timestamp now = make_now();
   auto snap = make_snapshot();
 
   const auto stale = normalizer.normalize(snap, now - std::chrono::seconds{90}, now);
-  assert(stale.has_value() && stale->quality == qts::QuoteQuality::stale);
+  assert(stale.has_value() && stale->quality == sts::QuoteQuality::stale);
 
   const auto future = normalizer.normalize(snap, now + std::chrono::seconds{1}, now);
-  assert(future.has_value() && future->quality == qts::QuoteQuality::out_of_sequence);
+  assert(future.has_value() && future->quality == sts::QuoteQuality::out_of_sequence);
 
   auto crossed = snap;
   crossed.bid_price[0] = crossed.offer_price[0] + 100;
   const auto cross = normalizer.normalize(crossed, now - std::chrono::seconds{1}, now);
-  assert(cross.has_value() && cross->quality == qts::QuoteQuality::crossed);
+  assert(cross.has_value() && cross->quality == sts::QuoteQuality::crossed);
 }
 
 void zero_limits_mean_no_band() {
-  qts::AmaSnapshotNormalizer normalizer;
-  const qts::Timestamp now = make_now();
+  sts::AmaSnapshotNormalizer normalizer;
+  const sts::Timestamp now = make_now();
   auto snap = make_snapshot();
   snap.high_limited = 0;  // FPGA-style missing field stays a valid zero
   snap.low_limited = 0;
   const auto event = normalizer.normalize(snap, now - std::chrono::seconds{1}, now);
   assert(event.has_value());
   assert(event->limit_up == 0 && event->limit_down == 0);
-  assert(event->quality == qts::QuoteQuality::valid);
+  assert(event->quality == sts::QuoteQuality::valid);
 }
 
 }  // namespace

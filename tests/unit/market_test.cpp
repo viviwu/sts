@@ -12,14 +12,14 @@
 #include <cassert>
 #include <chrono>
 
-#include "qts/market/instrument.hpp"
+#include "sts/market/instrument.hpp"
 
 namespace {
 
-qts::AshareInstrumentRules make_rules() { return qts::AshareInstrumentRules{"SSE.600000", qts::Exchange::sse, qts::AshareBoard::main, 1, 100, 100, 1'000'000, true, true, 900, 1'100}; }
+sts::AshareInstrumentRules make_rules() { return sts::AshareInstrumentRules{"SSE.600000", sts::Exchange::sse, sts::AshareBoard::main, 1, 100, 100, 1'000'000, true, true, 900, 1'100}; }
 
 void master_find_and_version() {
-  qts::InMemoryInstrumentMaster master{"2026-09-24"};
+  sts::InMemoryInstrumentMaster master{"2026-09-24"};
   assert(master.rules_version() == "2026-09-24");
   assert(master.find_rules("SSE.600000") == nullptr);  // fail closed on unknown
 
@@ -27,65 +27,65 @@ void master_find_and_version() {
   const auto* found = master.find_rules("SSE.600000");
   assert(found != nullptr && found->minimum_quantity == 100);
 
-  qts::AshareInstrumentRules updated = make_rules();
+  sts::AshareInstrumentRules updated = make_rules();
   updated.price_tick = 10;
   master.upsert(updated);
   assert(master.find_rules("SSE.600000")->price_tick == 10);
 }
 
 void calendar_trading_days() {
-  qts::StaticTradingCalendar calendar{{20260923, 20260924}};
+  sts::StaticTradingCalendar calendar{{20260923, 20260924}};
   assert(calendar.is_trading_day(20260924));
   assert(!calendar.is_trading_day(20260926));  // weekend / holiday
 }
 
-qts::QuoteEvent make_quote() {
-  qts::QuoteEvent quote{};
+sts::QuoteEvent make_quote() {
+  sts::QuoteEvent quote{};
   quote.instrument_id = "SSE.600000";
-  quote.exchange = qts::Exchange::sse;
+  quote.exchange = sts::Exchange::sse;
   quote.bid_price = 1'000;
   quote.ask_price = 1'001;
   quote.sequence = 7;
-  quote.receive_time = qts::Timestamp{std::chrono::seconds{100}};
-  quote.quality = qts::QuoteQuality::valid;
+  quote.receive_time = sts::Timestamp{std::chrono::seconds{100}};
+  quote.quality = sts::QuoteQuality::valid;
   return quote;
 }
 
-qts::QuoteQualityInput make_input() {
-  qts::QuoteQualityInput in{};
-  in.now = qts::Timestamp{std::chrono::seconds{101}};
+sts::QuoteQualityInput make_input() {
+  sts::QuoteQualityInput in{};
+  in.now = sts::Timestamp{std::chrono::seconds{101}};
   return in;
 }
 
 void quality_gate() {
-  assert(qts::assess_quote_quality(make_quote(), make_input()) == qts::QuoteQuality::valid);
+  assert(sts::assess_quote_quality(make_quote(), make_input()) == sts::QuoteQuality::valid);
 
   // Sequence regression and duplication.
   auto regressed = make_quote();
-  qts::QuoteQualityInput in = make_input();
+  sts::QuoteQualityInput in = make_input();
   in.has_last_sequence = true;
   in.last_sequence = 7;
-  assert(qts::assess_quote_quality(regressed, in) == qts::QuoteQuality::out_of_sequence);
+  assert(sts::assess_quote_quality(regressed, in) == sts::QuoteQuality::out_of_sequence);
 
   // Staleness beyond the budget.
   auto stale = make_quote();
-  stale.receive_time = qts::Timestamp{std::chrono::seconds{90}};
-  assert(qts::assess_quote_quality(stale, make_input()) == qts::QuoteQuality::stale);
+  stale.receive_time = sts::Timestamp{std::chrono::seconds{90}};
+  assert(sts::assess_quote_quality(stale, make_input()) == sts::QuoteQuality::stale);
 
   // Receive time in the future: clock anomaly.
   auto future = make_quote();
-  future.receive_time = qts::Timestamp{std::chrono::seconds{200}};
-  assert(qts::assess_quote_quality(future, make_input()) == qts::QuoteQuality::out_of_sequence);
+  future.receive_time = sts::Timestamp{std::chrono::seconds{200}};
+  assert(sts::assess_quote_quality(future, make_input()) == sts::QuoteQuality::out_of_sequence);
 
   // Crossed book.
   auto crossed = make_quote();
   crossed.bid_price = 1'002;
-  assert(qts::assess_quote_quality(crossed, make_input()) == qts::QuoteQuality::crossed);
+  assert(sts::assess_quote_quality(crossed, make_input()) == sts::QuoteQuality::crossed);
 
   // Adapter-marked unavailable passes through.
   auto down = make_quote();
-  down.quality = qts::QuoteQuality::unavailable;
-  assert(qts::assess_quote_quality(down, make_input()) == qts::QuoteQuality::unavailable);
+  down.quality = sts::QuoteQuality::unavailable;
+  assert(sts::assess_quote_quality(down, make_input()) == sts::QuoteQuality::unavailable);
 }
 
 }  // namespace

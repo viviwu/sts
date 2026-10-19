@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/ops/admin_socket.hpp"
+#include "sts/ops/admin_socket.hpp"
 
 #include <fcntl.h>
 #include <sys/socket.h>
@@ -23,7 +23,7 @@
 
 #include "nlohmann/json.hpp"
 
-namespace qts {
+namespace sts {
 namespace {
 
 void set_nonblocking(int sock) {
@@ -138,4 +138,4 @@ std::string query_live_state(const std::string& socket_path) {
   return reply;
 }
 
-}  // namespace qts
+}  // namespace sts

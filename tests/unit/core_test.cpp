@@ -13,17 +13,17 @@
 #include <chrono>
 #include <unordered_set>
 
-#include "qts/core/clock.hpp"
-#include "qts/core/event.hpp"
-#include "qts/core/event_bus.hpp"
+#include "sts/core/clock.hpp"
+#include "sts/core/event.hpp"
+#include "sts/core/event_bus.hpp"
 
 namespace {
 
 void manual_clock_set_and_advance() {
-  qts::ManualClock clock{};
-  assert(clock.now() == qts::Timestamp{});  // epoch by default
+  sts::ManualClock clock{};
+  assert(clock.now() == sts::Timestamp{});  // epoch by default
 
-  const qts::Timestamp t1{std::chrono::seconds{1'700'000'000}};
+  const sts::Timestamp t1{std::chrono::seconds{1'700'000'000}};
   clock.set(t1);
   assert(clock.now() == t1);
   clock.advance(std::chrono::milliseconds{500});
@@ -31,26 +31,26 @@ void manual_clock_set_and_advance() {
 }
 
 void system_clock_is_sane() {
-  qts::SystemClock clock{};
-  const qts::Timestamp t0 = clock.now();
-  assert(t0 > qts::Timestamp{});  // past epoch
+  sts::SystemClock clock{};
+  const sts::Timestamp t0 = clock.now();
+  assert(t0 > sts::Timestamp{});  // past epoch
   assert(clock.now() >= t0);      // non-decreasing
 }
 
 void clock_is_polymorphic() {
-  qts::ManualClock manual{};
-  const qts::Clock& as_base = manual;
-  const qts::Timestamp t{std::chrono::seconds{42}};
+  sts::ManualClock manual{};
+  const sts::Clock& as_base = manual;
+  const sts::Timestamp t{std::chrono::seconds{42}};
   manual.set(t);
   assert(as_base.now() == t);
 }
 
 void event_id_generator_is_monotonic() {
-  qts::EventIdGenerator gen{};
+  sts::EventIdGenerator gen{};
   assert(gen.next() == 1);
   assert(gen.next() == 2);
 
-  qts::EventIdGenerator replay{1'000};  // replay reproduces ids from a start
+  sts::EventIdGenerator replay{1'000};  // replay reproduces ids from a start
   assert(replay.next() == 1'000);
 
   std::unordered_set<std::uint64_t> seen;
@@ -59,11 +59,11 @@ void event_id_generator_is_monotonic() {
 }
 
 void envelope_defaults() {
-  const qts::EventEnvelope env{};
+  const sts::EventEnvelope env{};
   assert(env.event_id == 0);
   assert(env.trace_id.empty());
-  assert(env.source_time == qts::Timestamp{});
-  assert(env.receive_time == qts::Timestamp{});
+  assert(env.source_time == sts::Timestamp{});
+  assert(env.receive_time == sts::Timestamp{});
   assert(env.config_version.empty());
   assert(env.rules_version.empty());
   assert(env.source_message_id.empty());
@@ -72,12 +72,12 @@ void envelope_defaults() {
 // M11-7 regression: a released one-shot collector must never see a later
 // publish (the restart segfault was a dangling query subscription).
 void unsubscribed_collector_never_fires() {
-  qts::EventBus events;
+  sts::EventBus events;
   int permanent = 0;
-  events.subscribe_execution([&](const qts::ExecutionReport&) { ++permanent; });
+  events.subscribe_execution([&](const sts::ExecutionReport&) { ++permanent; });
   int collected = 0;
-  const qts::EventBus::Subscription token = events.subscribe_execution([&](const qts::ExecutionReport&) { ++collected; });
-  qts::ExecutionReport report{};
+  const sts::EventBus::Subscription token = events.subscribe_execution([&](const sts::ExecutionReport&) { ++collected; });
+  sts::ExecutionReport report{};
   events.publish(report);
   assert(collected == 1 && permanent == 1);
   events.unsubscribe_execution(token);

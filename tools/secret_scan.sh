@@ -37,7 +37,7 @@ for pattern in "${PATTERNS[@]}"; do
 done
 
 if [ "$failures" -ne 0 ]; then
-  echo "secret-scan FAILED: move secrets to environment variables (see qts/config/credentials.hpp)."
+  echo "secret-scan FAILED: move secrets to environment variables (see sts/config/credentials.hpp)."
   exit 1
 fi
 echo "secret-scan ok: no likely secrets in tracked files."

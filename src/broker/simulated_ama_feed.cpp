@@ -9,12 +9,12 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/broker/simulated_ama_feed.hpp"
+#include "sts/broker/simulated_ama_feed.hpp"
 
 #include <chrono>
 #include <stdexcept>
 
-namespace qts {
+namespace sts {
 namespace {
 
 // Pack (market, channel) into one map key.
@@ -253,4 +253,4 @@ std::optional<QuoteEvent> SimulatedAmaFeed::next_for(const std::string& security
   return emit_one(*state);
 }
 
-}  // namespace qts
+}  // namespace sts

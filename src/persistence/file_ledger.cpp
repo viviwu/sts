@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/persistence/file_ledger.hpp"
+#include "sts/persistence/file_ledger.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -17,9 +17,9 @@
 #include <stdexcept>
 
 #include "nlohmann/json.hpp"
-#include "qts/persistence/event_store.hpp"
+#include "sts/persistence/event_store.hpp"
 
-namespace qts {
+namespace sts {
 namespace {
 
 using nlohmann::json;
@@ -305,4 +305,4 @@ OpenSnapshot read_open_snapshot(const std::string& path) {
   }
 }
 
-}  // namespace qts
+}  // namespace sts

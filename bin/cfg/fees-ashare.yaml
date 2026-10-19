@@ -1,4 +1,4 @@
-# QTS paper fee table (M11-6): default schedule plus exact instrument-id
+# STS paper fee table (M11-6): default schedule plus exact instrument-id
 # overrides. Referenced by paper_sim.fee_file (relative to bin/cfg/).
 # Rates are per-million (2500 = 0.25%% = 万2.5); amounts are Price units
 # (50000 = 5 yuan). All keys optional, all values default to 0 (free).

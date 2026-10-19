@@ -14,21 +14,21 @@
 #include <string>
 #include <vector>
 
-#include "qts/broker/simulated_broker.hpp"
-#include "qts/execution/execution_api.hpp"
-#include "qts/market/instrument.hpp"
-#include "qts/oms/order_manager.hpp"
-#include "qts/persistence/ledger.hpp"
-#include "qts/strategy/grid_strategy.hpp"
+#include "sts/broker/simulated_broker.hpp"
+#include "sts/execution/execution_api.hpp"
+#include "sts/market/instrument.hpp"
+#include "sts/oms/order_manager.hpp"
+#include "sts/persistence/ledger.hpp"
+#include "sts/strategy/grid_strategy.hpp"
 
 namespace {
 
-qts::GridConfig grid_config() {
-  qts::GridConfig config{};
+sts::GridConfig grid_config() {
+  sts::GridConfig config{};
   config.strategy_id = "grid-1";
   config.account_id = "paper";
   config.instrument_id = "TEST";
-  config.exchange = qts::Exchange::unknown;
+  config.exchange = sts::Exchange::unknown;
   config.lower = 900;
   config.upper = 1'100;
   config.grids = 4;
@@ -36,22 +36,22 @@ qts::GridConfig grid_config() {
   return config;
 }
 
-qts::QuoteEvent make_quote(qts::Price last, std::uint64_t sequence) {
-  qts::QuoteEvent quote{};
+sts::QuoteEvent make_quote(sts::Price last, std::uint64_t sequence) {
+  sts::QuoteEvent quote{};
   quote.instrument_id = "TEST";
   quote.last_price = last;
   quote.sequence = sequence;
-  quote.receive_time = qts::Timestamp{};
-  quote.quality = qts::QuoteQuality::valid;
+  quote.receive_time = sts::Timestamp{};
+  quote.quality = sts::QuoteQuality::valid;
   return quote;
 }
 
 void bad_config_throws() {
   bool threw = false;
   try {
-    qts::GridConfig bad = grid_config();
+    sts::GridConfig bad = grid_config();
     bad.grids = 0;
-    qts::GridStrategy strategy{bad, 1'000};
+    sts::GridStrategy strategy{bad, 1'000};
   } catch (const std::invalid_argument&) {
     threw = true;
   }
@@ -59,8 +59,8 @@ void bad_config_throws() {
 }
 
 void foreign_quotes_ignored() {
-  qts::GridStrategy strategy{grid_config(), 1'000};
-  const qts::Portfolio book{0};
+  sts::GridStrategy strategy{grid_config(), 1'000};
+  const sts::Portfolio book{0};
   auto other = make_quote(500, 1);
   other.instrument_id = "OTHER";
   assert(strategy.on_quote(other, book).empty());
@@ -69,27 +69,27 @@ void foreign_quotes_ignored() {
 }
 
 void grid_drill_end_to_end() {
-  qts::EventBus events;
-  qts::SimulatedBroker broker{events};
+  sts::EventBus events;
+  sts::SimulatedBroker broker{events};
   broker.set_starting_cash(1'000'000);
-  qts::RiskEngine risk{{10'000, 0, true}};
-  qts::InMemoryEventLedger ledger{};
-  qts::OrderManager oms{broker, risk, events, &ledger};
-  qts::GridStrategy strategy{grid_config(), 1'000};
-  qts::ImmediateAlgorithm execution{};
+  sts::RiskEngine risk{{10'000, 0, true}};
+  sts::InMemoryEventLedger ledger{};
+  sts::OrderManager oms{broker, risk, events, &ledger};
+  sts::GridStrategy strategy{grid_config(), 1'000};
+  sts::ImmediateAlgorithm execution{};
 
   // Scripted path: 1000 -> 950 -> 900 -> 950 -> 1000 -> 1050 -> 1100.
-  const std::vector<qts::Price> path{1'000, 950, 900, 950, 1'000, 1'050, 1'100};
+  const std::vector<sts::Price> path{1'000, 950, 900, 950, 1'000, 1'050, 1'100};
   int submitted = 0;
   std::uint64_t sequence = 0;
-  for (const qts::Price price : path) {
+  for (const sts::Price price : path) {
     broker.set_reference_price("TEST", price);
     auto quote = make_quote(price, ++sequence);
     execution.on_quote(quote);  // no-op except for volume-tracking algorithms
     for (auto intent : strategy.on_quote(quote, broker.book())) {
       execution.add_parent(intent);
     }
-    for (auto child : execution.poll(qts::Timestamp{})) {
+    for (auto child : execution.poll(sts::Timestamp{})) {
       assert(oms.submit(child));
       ++submitted;
     }
@@ -103,7 +103,7 @@ void grid_drill_end_to_end() {
   assert(oms.reconcile_open_orders({}).empty());
 
   bool called = false;
-  broker.set_account_snapshot_handler([&](const qts::TradeAccountSnapshot& snapshot) {
+  broker.set_account_snapshot_handler([&](const sts::TradeAccountSnapshot& snapshot) {
     called = true;
     // Buys 100@950 + 100@900, sells 100@(950+1000+1050+1100).
     assert(snapshot.available_cash == 1'225'000);

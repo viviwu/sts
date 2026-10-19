@@ -9,9 +9,9 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/market/ashare.hpp"
+#include "sts/market/ashare.hpp"
 
-namespace qts {
+namespace sts {
 
 OrderValidationResult AshareOrderValidator::validate(const OrderIntent& intent, const AshareInstrumentRules& rules) {
   OrderValidationResult identity = check_identity(intent, rules);
@@ -63,4 +63,4 @@ OrderValidationResult AshareOrderValidator::check_price(const OrderIntent& inten
   return {true, ""};
 }
 
-}  // namespace qts
+}  // namespace sts

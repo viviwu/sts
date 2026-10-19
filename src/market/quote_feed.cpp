@@ -9,14 +9,14 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/market/quote_feed.hpp"
+#include "sts/market/quote_feed.hpp"
 
 #include <chrono>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 
-namespace qts {
+namespace sts {
 
 SimulatedQuoteFeed::SimulatedQuoteFeed(std::uint64_t seed, Price start_price, Price step, Price low, Price high)
     : start_{start_price},
@@ -174,4 +174,4 @@ std::optional<QuoteEvent> FileQuoteFeed::next() {
   return quotes_[cursor_++];
 }
 
-}  // namespace qts
+}  // namespace sts

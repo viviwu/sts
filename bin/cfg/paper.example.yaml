@@ -7,20 +7,20 @@ rules_version: "1"
 # ledger_file: ../db/ledger.jsonl
 # Optional async SQLite query projection (M9-3): unset disables it; set it
 # to enable (JSONL stays the recovery authority). Demo: see demo.yaml.
-# sqlite_file: ../db/qts.db
+# sqlite_file: ../db/sts.db
 # Optional formal-phase PostgreSQL projection: NAMES an env var holding the
 # DSN (the DSN itself never enters yaml). Mutually exclusive with
 # sqlite_file above; unset disables. Needs a PG-gated build
-# (-DQTS_ENABLE_PG=ON, default OFF keeps zero system deps).
+# (-DSTS_ENABLE_PG=ON, default OFF keeps zero system deps).
 # postgres:
-#   conninfo_env: QTS_PG_CONNINFO
+#   conninfo_env: STS_PG_CONNINFO
 # Optional Prometheus scrape endpoint (observability): "host:port" serves
 # the metrics registry on /metrics (anything else 404s). Empty disables
 # (default: drills and offline tools stay silent). Loopback only unless
 # ops explicitly binds wider. A bad listen address refuses startup.
 # metrics:
 #   listen: 127.0.0.1:9090
-# Optional live-state snapshot for qts_admin state (zero IPC): small JSON
+# Optional live-state snapshot for sts_admin state (zero IPC): small JSON
 # written every 50 ticks and at shutdown.
 # state_file: ../db/live-state.json
 # Optional structured-log file sink (M9-1/M9.2): unset keeps stdout-only
@@ -30,7 +30,7 @@ rules_version: "1"
 # per startup (long runs rotate at midnight automatically). Enabled here so
 # every drill leaves its trace in ./bin/log (unique name, never overwritten).
 log:
-  file: ../log/qts-paper.log
+  file: ../log/sts-paper.log
   level: info  # one of debug/info/warn/error (M9.1, default info)
 # Optional continuous demo feed (M9-0): unset/disabled keeps the one-shot
 # drill; enabled runs a deterministic simulated walk (ticks: 0 = until
@@ -41,7 +41,7 @@ log:
 #   interval_ms: 100
 #   seed: 42
 # Optional live vendor sources (M7-2 server wiring, vendor-gated builds
-# only: -DQTS_ENABLE_VENDOR_SDKS=ON; default builds refuse vendor brokers).
+# only: -DSTS_ENABLE_VENDOR_SDKS=ON; default builds refuse vendor brokers).
 # Customer identity/password are NEVER configured: the trader passes them at
 # gateway login and the counter session builds lazily (ADR-053). The gateway
 # user pair below is a yaml session param (private files hold real values).
@@ -55,7 +55,7 @@ log:
 #   agw_user: user5        # optional, pair with agw_password
 #   agw_password: password5
 # Live-trading approval (M7-2d, ADR-039): human-signed JSON covering
-# non-paper brokers for one trade date (`qts_admin approve` writes it).
+# non-paper brokers for one trade date (`sts_admin approve` writes it).
 # Empty (default) means no live trading: vendor brokers refuse to build
 # before their session is even constructed. Paper channels never need it.
 # control:

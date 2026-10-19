@@ -24,8 +24,8 @@
 // shares), the submit bookkeeping seed, and the pure mappings asserted
 // directly (parse_instrument / map_ord_status / map_order_type). NOT covered:
 // ATPQuantAPI::Init/Login and real Req* sends — that is the M7-2c 联调 run
-// with credentials in the Linux environment, plus qts_quantapi_readonly.
+// with credentials in the Linux environment, plus sts_quantapi_readonly.
 #pragma once
 
-#include "qts/broker/quantapi_fixtures.hpp"
+#include "sts/broker/quantapi_fixtures.hpp"
 #include "quantapi_trade_adapter.hpp"

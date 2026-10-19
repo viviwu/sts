@@ -22,11 +22,11 @@
 #include <utility>
 #include <vector>
 
-#include "qts/broker/ama_snapshot.hpp"
-#include "qts/broker/ama_tick.hpp"
-#include "qts/broker/quote_api.hpp"
+#include "sts/broker/ama_snapshot.hpp"
+#include "sts/broker/ama_tick.hpp"
+#include "sts/broker/quote_api.hpp"
 
-namespace qts {
+namespace sts {
 
 class AmaQuoteAdapter;
 
@@ -129,4 +129,4 @@ class AmaQuoteAdapter final : public QuoteApi {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace qts
+}  // namespace sts

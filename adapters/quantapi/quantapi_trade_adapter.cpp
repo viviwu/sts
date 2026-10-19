@@ -81,7 +81,7 @@
 
 using namespace atp::quant_api;  // NOLINT(build/namespaces) — vendor TU-local alias
 
-namespace qts {
+namespace sts {
 namespace {
 
 constexpr std::int32_t kSendUnavailable = -100;   // adapter synthetic: no live session
@@ -342,7 +342,7 @@ struct QuantapiTradeAdapter::Impl final : public ATPQuantHandler {
     props_->SetValue(prop::kOrderWay, config_.order_way.c_str());
     // Terminal fingerprint: pinned override wins, otherwise generated per
     // the mandated #<APP>IIP:<ip>;MAC:<mac>;HD:<hd> shape (ADR-053).
-    const std::string feature = config_.client_feature_code.empty() ? quantapi_detail::generate_feature_code("QTS") : config_.client_feature_code;
+    const std::string feature = config_.client_feature_code.empty() ? quantapi_detail::generate_feature_code("STS") : config_.client_feature_code;
     props_->SetValue(prop::kClientFeatureCode, feature.c_str());
     if (!config_.agw_user.empty()) {
       props_->SetValue(prop::kAgwUser, config_.agw_user.c_str());
@@ -1945,4 +1945,4 @@ void inject_inflight(QuantapiTradeAdapter& adapter, std::int64_t request_id, con
 }
 
 }  // namespace quantapi_detail
-}  // namespace qts
+}  // namespace sts

@@ -9,9 +9,9 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/ops/metrics.hpp"
+#include "sts/ops/metrics.hpp"
 
-namespace qts {
+namespace sts {
 
 void MetricsRegistry::inc(const std::string& name, std::int64_t delta) {
   std::scoped_lock lock{mutex_};
@@ -50,4 +50,4 @@ void MetricsRegistry::write_prometheus(std::ostream& out) const {
   }
 }
 
-}  // namespace qts
+}  // namespace sts

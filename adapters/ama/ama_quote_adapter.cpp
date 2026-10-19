@@ -31,7 +31,7 @@
 #include "ama_test_seam.hpp"
 #include "query/ama_query_spi.h"
 
-namespace qts {
+namespace sts {
 namespace {
 
 // Bounded NUL-terminated read from a fixed vendor char array.
@@ -460,4 +460,4 @@ void inject_tick(AmaQuoteAdapter& adapter, std::int32_t market, std::int32_t cha
 void inject_event(AmaQuoteAdapter& adapter, std::uint32_t event_code) { adapter.impl_->handle_event(event_code); }
 
 }  // namespace ama_detail
-}  // namespace qts
+}  // namespace sts

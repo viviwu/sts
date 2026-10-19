@@ -1,6 +1,6 @@
-# QTS paper service config for the container slot (deploy/docker-compose.yml).
+# STS paper service config for the container slot (deploy/docker-compose.yml).
 # Same drill semantics as paper.example.yaml, but stateful paths point at
-# the persistent volume (/var/lib/qts) instead of the ephemeral ./bin
+# the persistent volume (/var/lib/sts) instead of the ephemeral ./bin
 # tree, and restart is left to compose ("unless-stopped"). Not for live
 # trading.
 environment: paper
@@ -8,15 +8,15 @@ config_version: "1"
 rules_version: "1"
 # Recovery authority on the persistent volume (appended across restarts and
 # container rebuilds; back it up per docs/runbook.md §4).
-ledger_file: /var/lib/qts/ledger.jsonl
+ledger_file: /var/lib/sts/ledger.jsonl
 # Query projection next to the ledger (same volume, same lifecycle).
-sqlite_file: /var/lib/qts/qts.db
-# Live-state snapshot for qts_admin state (zero IPC).
-state_file: /var/lib/qts/live-state.json
+sqlite_file: /var/lib/sts/sts.db
+# Live-state snapshot for sts_admin state (zero IPC).
+state_file: /var/lib/sts/live-state.json
 # Structured-log file sink: stdout stays (docker logs), a copy lands on the
 # volume next to the ledger.
 log:
-  file: /var/lib/qts/qts-paper.log
+  file: /var/lib/sts/sts-paper.log
   level: info  # one of debug/info/warn/error (M9.1, default info)
 # Disk retention (same defaults as paper.example.yaml).
 retention:

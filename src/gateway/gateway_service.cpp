@@ -9,11 +9,11 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/gateway/gateway_service.hpp"
+#include "sts/gateway/gateway_service.hpp"
 
 #include <utility>
 
-namespace qts::gateway {
+namespace sts::gateway {
 namespace {
 
 bool valid_order_ticket(const OrderIntent& intent, std::string& reason) {
@@ -438,4 +438,4 @@ FrontResult GatewayService::settle_confirm(const ReconcileAttestation& claimed) 
   return {true, "attested at event " + std::to_string(event_id)};
 }
 
-}  // namespace qts::gateway
+}  // namespace sts::gateway

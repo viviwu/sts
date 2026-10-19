@@ -10,7 +10,7 @@
 
 ## 1. 已验证成立的设计
 
-| QTS 假设 | ATP/QuantAPI 现实 | 结论 |
+| STS 假设 | ATP/QuantAPI 现实 | 结论 |
 | --- | --- | --- |
 | 价格数量定点整数 | TradeAPI 全 int64（价 N13(4)，量 N15(2)，金额 N18(4)） | 成立；QuantAPI 同语义但用 `double` 承载，适配器侧换算 |
 | 无改单（ADR-020） | 两包均无 Replace/Modify，改单=撤单+重下 | 成立，无需返工 |
@@ -30,7 +30,7 @@
 
 > 落地状态（2026-10-01，M7-2c 代码交付 + Linux 环境 vendor 构建验证）：以上映射实现于
 > `adapters/quantapi/quantapi_trade_adapter.cpp`（状态表/方向/市场/账户三元组/查询与快照换算）与
-> `include/qts/broker/quantapi_fixtures.hpp`（值 fixture），锁表单测
+> `include/sts/broker/quantapi_fixtures.hpp`（值 fixture），锁表单测
 > `adapters/tests/quantapi_adapter_test.cpp`（Linux 环境 `ctest 22/22` 全绿）。状态对照补全
 > `kInternalCanceledOrder/kCanceledSuccess(91/92) -> Cancelled`，表外状态值 fail-closed 丢弃并计数
 > （`status_unknown_drops`）。**暂定（联调核对后锁定）**：市价单 `order_type` 按 `MarketOrderStyle`

@@ -36,7 +36,7 @@ flowchart LR
 
 ## 线程与进程建议
 
-初版使用单个 `qts_server` 进程：I/O 线程只收发和解码，按分区投递至策略/OMS 工作线程。策略按 `strategy_id` 分片，同一账户的订单状态在一个串行分区内处理。
+初版使用单个 `sts_server` 进程：I/O 线程只收发和解码，按分区投递至策略/OMS 工作线程。策略按 `strategy_id` 分片，同一账户的订单状态在一个串行分区内处理。
 
 生产拆分时，优先独立部署 Market Data、Execution Gateway、OMS/Risk 和 Research 服务；接口通过 Protobuf 定义，事件记录作为跨进程恢复的权威来源。
 

@@ -15,7 +15,7 @@
 //
 // This is the single header outside the adapter .cpp that includes vendor
 // headers, and it is only reachable from adapters/tests (built with
-// QTS_ENABLE_VENDOR_SDKS=ON; CI never enables it). It exposes:
+// STS_ENABLE_VENDOR_SDKS=ON; CI never enables it). It exposes:
 //   - pure vendor->fixture conversion (snapshot_to_fixture): the exact
 //     field-for-field copy the SPI callback performs, callable without a
 //     vendor session and without touching IAMDApi::FreeMemory;
@@ -31,7 +31,7 @@
 #include "ama.h"
 #include "ama_quote_adapter.hpp"
 
-namespace qts {
+namespace sts {
 namespace ama_detail {
 
 AmaSnapshotFixture snapshot_to_fixture(const amd::ama::MDSnapshot& snapshot);
@@ -47,4 +47,4 @@ bool build_cfg(const AmaSessionConfig& config, amd::ama::Cfg& out);
 bool parse_instrument(const InstrumentId& id, std::int32_t& market, std::string& code);
 
 }  // namespace ama_detail
-}  // namespace qts
+}  // namespace sts

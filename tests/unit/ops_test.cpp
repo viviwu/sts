@@ -21,23 +21,23 @@
 
 #if defined(_WIN32)
   #include <process.h>
-  #define QTS_TEST_PID _getpid()
+  #define STS_TEST_PID _getpid()
 #else
   #include <unistd.h>
-  #define QTS_TEST_PID ::getpid()
+  #define STS_TEST_PID ::getpid()
 #endif
 
-#include "qts/broker/simulated_broker.hpp"
-#include "qts/config/credentials.hpp"
-#include "qts/oms/order_manager.hpp"
-#include "qts/ops/log.hpp"
-#include "qts/ops/metrics.hpp"
-#include "qts/ops/metrics_endpoint.hpp"
+#include "sts/broker/simulated_broker.hpp"
+#include "sts/config/credentials.hpp"
+#include "sts/oms/order_manager.hpp"
+#include "sts/ops/log.hpp"
+#include "sts/ops/metrics.hpp"
+#include "sts/ops/metrics_endpoint.hpp"
 
 namespace {
 
 void counters_and_gauges() {
-  qts::MetricsRegistry metrics{};
+  sts::MetricsRegistry metrics{};
   assert(metrics.get("missing") == 0);
   metrics.inc("orders_total");
   metrics.inc("orders_total", 2);
@@ -57,9 +57,9 @@ void counters_and_gauges() {
 }
 
 void structured_log_lines() {
-  qts::log::set_level(qts::log::Level::info);
+  sts::log::set_level(sts::log::Level::info);
   std::ostringstream out;
-  qts::log::info(out, "gateway", "drill finished", {{"submitted", "6"}});
+  sts::log::info(out, "gateway", "drill finished", {{"submitted", "6"}});
   const std::string line = out.str();
   assert(line.back() == '\n' && line.find('\n') == line.size() - 1);  // exactly one JSON object
   assert(line.find("\"level\":\"info\"") != std::string::npos);
@@ -68,32 +68,32 @@ void structured_log_lines() {
   assert(line.find("\"time\":\"") != std::string::npos);
 
   std::ostringstream escaped;
-  qts::log::warn(escaped, "c\"omponent", "a\nb", {});
+  sts::log::warn(escaped, "c\"omponent", "a\nb", {});
   assert(escaped.str().find("\\\"") != std::string::npos);
   assert(escaped.str().find("\\n") != std::string::npos);
 }
 
 void log_levels_filter_debug() {
-  qts::log::Level parsed = qts::log::Level::info;
-  assert(qts::log::parse_level("debug", parsed) && parsed == qts::log::Level::debug);
-  assert(qts::log::parse_level("error", parsed) && parsed == qts::log::Level::error);
-  assert(!qts::log::parse_level("verbose", parsed));
-  assert(std::string(qts::log::level_name(qts::log::Level::debug)) == "debug");
+  sts::log::Level parsed = sts::log::Level::info;
+  assert(sts::log::parse_level("debug", parsed) && parsed == sts::log::Level::debug);
+  assert(sts::log::parse_level("error", parsed) && parsed == sts::log::Level::error);
+  assert(!sts::log::parse_level("verbose", parsed));
+  assert(std::string(sts::log::level_name(sts::log::Level::debug)) == "debug");
 
-  qts::log::set_level(qts::log::Level::info);
-  assert(qts::log::level() == qts::log::Level::info);
-  assert(!qts::log::should_log(qts::log::Level::debug));
-  assert(qts::log::should_log(qts::log::Level::error));
+  sts::log::set_level(sts::log::Level::info);
+  assert(sts::log::level() == sts::log::Level::info);
+  assert(!sts::log::should_log(sts::log::Level::debug));
+  assert(sts::log::should_log(sts::log::Level::error));
   std::ostringstream dropped;
-  qts::log::debug(dropped, "gateway", "noisy", {});
+  sts::log::debug(dropped, "gateway", "noisy", {});
   assert(dropped.str().empty());
 
-  qts::log::set_level(qts::log::Level::debug);
-  assert(qts::log::should_log(qts::log::Level::debug));
+  sts::log::set_level(sts::log::Level::debug);
+  assert(sts::log::should_log(sts::log::Level::debug));
   std::ostringstream kept;
-  qts::log::debug(kept, "gateway", "noisy", {});
+  sts::log::debug(kept, "gateway", "noisy", {});
   assert(kept.str().find("\"level\":\"debug\"") != std::string::npos);
-  qts::log::set_level(qts::log::Level::info);  // leave the default for other tests
+  sts::log::set_level(sts::log::Level::info);  // leave the default for other tests
 }
 
 void log_file_names_differ_per_day_and_startup() {
@@ -106,33 +106,33 @@ void log_file_names_differ_per_day_and_startup() {
   day_a.tm_sec = 0;
   std::tm day_b = day_a;
   day_b.tm_mday = 3;
-  const std::string for_a = qts::log::resolve_log_file("/tmp/qts-demo.log", day_a, 100);
-  const std::string for_b = qts::log::resolve_log_file("/tmp/qts-demo.log", day_b, 100);
+  const std::string for_a = sts::log::resolve_log_file("/tmp/sts-demo.log", day_a, 100);
+  const std::string for_b = sts::log::resolve_log_file("/tmp/sts-demo.log", day_b, 100);
   assert(for_a != for_b);  // daily names differ
   assert(for_a.find("20261002") != std::string::npos);
   assert(for_b.find("20261003") != std::string::npos);
 
-  const std::string pid_a = qts::log::resolve_log_file("/tmp/qts-demo.log", day_a, 100);
-  const std::string pid_b = qts::log::resolve_log_file("/tmp/qts-demo.log", day_a, 101);
+  const std::string pid_a = sts::log::resolve_log_file("/tmp/sts-demo.log", day_a, 100);
+  const std::string pid_b = sts::log::resolve_log_file("/tmp/sts-demo.log", day_a, 101);
   assert(pid_a != pid_b);  // per-startup names differ
   assert(pid_a.find("pid100") != std::string::npos);
 
   // strftime patterns expand: %Y-%m-%d becomes the calendar date.
-  const std::string dated = qts::log::resolve_log_file("/tmp/qts-%Y%m%d.log", day_a, 100);
+  const std::string dated = sts::log::resolve_log_file("/tmp/sts-%Y%m%d.log", day_a, 100);
   assert(dated.find("%") == std::string::npos);
   assert(dated.find("20261002") != std::string::npos);
 
-  assert(qts::log::resolve_log_file("").empty());
+  assert(sts::log::resolve_log_file("").empty());
 }
 
 void logger_writes_unique_files() {
-  qts::log::set_level(qts::log::Level::info);
-  const auto dir = std::filesystem::temp_directory_path() / ("qts-log-test-" + std::to_string(QTS_TEST_PID));
+  sts::log::set_level(sts::log::Level::info);
+  const auto dir = std::filesystem::temp_directory_path() / ("sts-log-test-" + std::to_string(STS_TEST_PID));
   std::filesystem::create_directories(dir);
-  const std::string pattern = (dir / "qts-test.log").string();
+  const std::string pattern = (dir / "sts-test.log").string();
 
-  qts::log::Logger first{pattern};
-  qts::log::Logger second{pattern};
+  sts::log::Logger first{pattern};
+  sts::log::Logger second{pattern};
   assert(first.has_file() && second.has_file());
   assert(first.file_path() != pattern);             // stamp inserted, never the raw pattern
   assert(first.file_path() != second.file_path());  // same second still collides safely
@@ -152,7 +152,7 @@ void logger_writes_unique_files() {
   assert(body.find("noisy") == std::string::npos);
   assert(body.find("\"time\":\"") != std::string::npos);
 
-  qts::log::Logger stdout_only{""};
+  sts::log::Logger stdout_only{""};
   assert(!stdout_only.has_file() && stdout_only.file_path().empty());
 
   std::error_code ec;
@@ -160,39 +160,39 @@ void logger_writes_unique_files() {
 }
 
 void prune_keeps_newest_and_ignores_strangers() {
-  const auto dir = std::filesystem::temp_directory_path() / ("qts-log-prune-" + std::to_string(QTS_TEST_PID));
+  const auto dir = std::filesystem::temp_directory_path() / ("sts-log-prune-" + std::to_string(STS_TEST_PID));
   std::error_code ec;
   std::filesystem::remove_all(dir, ec);
   std::filesystem::create_directories(dir);
-  const std::string pattern = (dir / "qts-prune.log").string();
+  const std::string pattern = (dir / "sts-prune.log").string();
   for (const std::string& name :
-       {"qts-prune-20261001-000000-pid1.log", "qts-prune-20261002-000000-pid1.log", "qts-prune-20261003-000000-pid1.log", "unrelated.log", "qts-prune-20261004-000000-pid1.txt"}) {
+       {"sts-prune-20261001-000000-pid1.log", "sts-prune-20261002-000000-pid1.log", "sts-prune-20261003-000000-pid1.log", "unrelated.log", "sts-prune-20261004-000000-pid1.txt"}) {
     std::ofstream out{dir / name};
     out << "x\n";
   }
-  qts::log::prune_log_files(pattern, 2);
-  assert(std::filesystem::exists(dir / "qts-prune-20261003-000000-pid1.log"));
-  assert(std::filesystem::exists(dir / "qts-prune-20261002-000000-pid1.log"));
-  assert(!std::filesystem::exists(dir / "qts-prune-20261001-000000-pid1.log"));
+  sts::log::prune_log_files(pattern, 2);
+  assert(std::filesystem::exists(dir / "sts-prune-20261003-000000-pid1.log"));
+  assert(std::filesystem::exists(dir / "sts-prune-20261002-000000-pid1.log"));
+  assert(!std::filesystem::exists(dir / "sts-prune-20261001-000000-pid1.log"));
   assert(std::filesystem::exists(dir / "unrelated.log"));                       // different stem kept
-  assert(std::filesystem::exists(dir / "qts-prune-20261004-000000-pid1.txt"));  // different extension kept
-  qts::log::prune_log_files(pattern, 0);                                        // 0 keeps everything
-  assert(std::filesystem::exists(dir / "qts-prune-20261002-000000-pid1.log"));
-  qts::log::prune_log_files("", 1);  // empty pattern is a no-op
+  assert(std::filesystem::exists(dir / "sts-prune-20261004-000000-pid1.txt"));  // different extension kept
+  sts::log::prune_log_files(pattern, 0);                                        // 0 keeps everything
+  assert(std::filesystem::exists(dir / "sts-prune-20261002-000000-pid1.log"));
+  sts::log::prune_log_files("", 1);  // empty pattern is a no-op
   std::filesystem::remove_all(dir, ec);
 }
 
 void oms_feeds_metrics() {
-  qts::EventBus events;
-  qts::SimulatedBroker broker{events};
-  qts::RiskEngine risk{{100, 10'000, true}};
-  qts::MetricsRegistry metrics{};
-  qts::OrderManager oms{broker, risk, events, nullptr};
+  sts::EventBus events;
+  sts::SimulatedBroker broker{events};
+  sts::RiskEngine risk{{100, 10'000, true}};
+  sts::MetricsRegistry metrics{};
+  sts::OrderManager oms{broker, risk, events, nullptr};
   oms.set_metrics(&metrics);
 
-  qts::OrderIntent ok{"m1", "paper", "test", "TEST", qts::Side::buy, qts::OrderType::limit, qts::TimeInForce::day, 10, 100};
+  sts::OrderIntent ok{"m1", "paper", "test", "TEST", sts::Side::buy, sts::OrderType::limit, sts::TimeInForce::day, 10, 100};
   assert(oms.submit(ok));
-  qts::OrderIntent too_big{"m2", "paper", "test", "TEST", qts::Side::buy, qts::OrderType::limit, qts::TimeInForce::day, 10'000, 100};
+  sts::OrderIntent too_big{"m2", "paper", "test", "TEST", sts::Side::buy, sts::OrderType::limit, sts::TimeInForce::day, 10'000, 100};
   assert(!oms.submit(too_big));  // risk rejection
   assert(oms.cancel("m1"));
 
@@ -233,9 +233,9 @@ std::string http_get(const std::string& host, std::uint16_t port, const std::str
 }
 
 void metrics_endpoint_serves_registry() {
-  qts::MetricsRegistry metrics{};
+  sts::MetricsRegistry metrics{};
   metrics.inc("oms_orders_submitted_total", 7);
-  qts::MetricsEndpoint endpoint{"127.0.0.1:0", metrics};
+  sts::MetricsEndpoint endpoint{"127.0.0.1:0", metrics};
   assert(endpoint.enabled() && endpoint.port() != 0);
   const std::string body = http_get("127.0.0.1", endpoint.port(), "/metrics");
   assert(body.find("HTTP/1.0 200") != std::string::npos);
@@ -245,12 +245,12 @@ void metrics_endpoint_serves_registry() {
 }
 
 void metrics_endpoint_disabled_and_bad_listen() {
-  qts::MetricsRegistry metrics{};
-  qts::MetricsEndpoint off{"", metrics};
+  sts::MetricsRegistry metrics{};
+  sts::MetricsEndpoint off{"", metrics};
   assert(!off.enabled() && off.port() == 0);
   bool threw = false;
   try {
-    qts::MetricsEndpoint bad{"no-colon-here", metrics};
+    sts::MetricsEndpoint bad{"no-colon-here", metrics};
   } catch (const std::runtime_error&) {
     threw = true;
   }
@@ -258,41 +258,41 @@ void metrics_endpoint_disabled_and_bad_listen() {
 }
 
 void credentials_come_from_env_only() {
-  ::unsetenv("QTS_OPSTEST_CUST_ID");
-  ::unsetenv("QTS_OPSTEST_FUND_ACCOUNT_ID");
-  ::unsetenv("QTS_OPSTEST_PASSWORD");
+  ::unsetenv("STS_OPSTEST_CUST_ID");
+  ::unsetenv("STS_OPSTEST_FUND_ACCOUNT_ID");
+  ::unsetenv("STS_OPSTEST_PASSWORD");
 
-  qts::BrokerCredentials creds{};
-  assert(!qts::try_load_broker_credentials("QTS_OPSTEST", creds));
+  sts::BrokerCredentials creds{};
+  assert(!sts::try_load_broker_credentials("STS_OPSTEST", creds));
   assert(creds.empty());
   bool threw = false;
   try {
-    (void)qts::load_broker_credentials("QTS_OPSTEST");
+    (void)sts::load_broker_credentials("STS_OPSTEST");
   } catch (const std::runtime_error&) {
     threw = true;
   }
   assert(threw);
 
-  ::setenv("QTS_OPSTEST_CUST_ID", "cust-1", 1);
+  ::setenv("STS_OPSTEST_CUST_ID", "cust-1", 1);
   threw = false;  // partial secrets fail closed
   try {
-    (void)qts::try_load_broker_credentials("QTS_OPSTEST", creds);
+    (void)sts::try_load_broker_credentials("STS_OPSTEST", creds);
   } catch (const std::runtime_error&) {
     threw = true;
   }
   assert(threw);
 
-  ::setenv("QTS_OPSTEST_FUND_ACCOUNT_ID", "fund-1", 1);
-  ::setenv("QTS_OPSTEST_PASSWORD", "topsecret-value", 1);
-  assert(qts::try_load_broker_credentials("QTS_OPSTEST", creds));
+  ::setenv("STS_OPSTEST_FUND_ACCOUNT_ID", "fund-1", 1);
+  ::setenv("STS_OPSTEST_PASSWORD", "topsecret-value", 1);
+  assert(sts::try_load_broker_credentials("STS_OPSTEST", creds));
   assert(creds.cust_id == "cust-1" && creds.fund_account_id == "fund-1" && creds.password == "topsecret-value");
   const std::string redacted = creds.redacted();
   assert(redacted.find("topsecret-value") == std::string::npos);  // values never printed
   assert(redacted.find("password=set") != std::string::npos);
 
-  ::unsetenv("QTS_OPSTEST_CUST_ID");
-  ::unsetenv("QTS_OPSTEST_FUND_ACCOUNT_ID");
-  ::unsetenv("QTS_OPSTEST_PASSWORD");
+  ::unsetenv("STS_OPSTEST_CUST_ID");
+  ::unsetenv("STS_OPSTEST_FUND_ACCOUNT_ID");
+  ::unsetenv("STS_OPSTEST_PASSWORD");
 }
 
 }  // namespace

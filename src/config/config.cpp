@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/config/config.hpp"
+#include "sts/config/config.hpp"
 
 #include <cctype>
 #include <cstddef>
@@ -18,7 +18,7 @@
 
 #include "yaml-cpp/yaml.h"
 
-namespace qts {
+namespace sts {
 namespace {
 
 bool is_absolute_path(const std::string& path) { return !path.empty() && path[0] == '/'; }
@@ -537,4 +537,4 @@ AppConfig load_app_config(const std::string& path) {
   return config;
 }
 
-}  // namespace qts
+}  // namespace sts

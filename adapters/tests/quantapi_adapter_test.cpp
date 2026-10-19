@@ -10,7 +10,7 @@
   */
 // clang-format on
 // QuantAPI adapter unit tests (M7-2c). Vendor-gated target: built only with
-// QTS_ENABLE_VENDOR_SDKS=ON, runs only where the SDK exists (Linux env);
+// STS_ENABLE_VENDOR_SDKS=ON, runs only where the SDK exists (Linux env);
 // CI never builds or runs this file (ADR-033).
 //
 // Covered: the pure mappings (instrument parse, ATPOrdStatusConst status
@@ -23,7 +23,7 @@
 //
 // NOT covered: live ATPQuantAPI::Init/Login and real Req* sends — that is
 // the M7-2c 联调 run (credentials in the Linux environment) via
-// qts_quantapi_readonly.
+// sts_quantapi_readonly.
 
 #include <cassert>
 #include <cstdio>
@@ -36,34 +36,34 @@
 
 namespace {
 
-using qts::ClientOrderId;
-using qts::ExecutionReport;
-using qts::InstrumentId;
-using qts::OrderIntent;
-using qts::OrderStatus;
-using qts::PositionSnapshot;
-using qts::QuantapiAckFixture;
-using qts::QuantapiAdapterStats;
-using qts::QuantapiAssetFixture;
-using qts::QuantapiCancelRspFixture;
-using qts::QuantapiFundFixture;
-using qts::QuantapiLoginFixture;
-using qts::QuantapiOrderQueryFixture;
-using qts::QuantapiRtnFixture;
-using qts::QuantapiSecInfoFixture;
-using qts::QuantapiSessionConfig;
-using qts::QuantapiShareFixture;
-using qts::QuantapiTradeAdapter;
-using qts::TradeAccountSnapshot;
-namespace detail = qts::quantapi_detail;
-namespace fx = qts::quantapi_fixtures;
+using sts::ClientOrderId;
+using sts::ExecutionReport;
+using sts::InstrumentId;
+using sts::OrderIntent;
+using sts::OrderStatus;
+using sts::PositionSnapshot;
+using sts::QuantapiAckFixture;
+using sts::QuantapiAdapterStats;
+using sts::QuantapiAssetFixture;
+using sts::QuantapiCancelRspFixture;
+using sts::QuantapiFundFixture;
+using sts::QuantapiLoginFixture;
+using sts::QuantapiOrderQueryFixture;
+using sts::QuantapiRtnFixture;
+using sts::QuantapiSecInfoFixture;
+using sts::QuantapiSessionConfig;
+using sts::QuantapiShareFixture;
+using sts::QuantapiTradeAdapter;
+using sts::TradeAccountSnapshot;
+namespace detail = sts::quantapi_detail;
+namespace fx = sts::quantapi_fixtures;
 
 int g_sidecar_counter = 0;
 
 QuantapiSessionConfig make_config(const std::string& sidecar) {
   QuantapiSessionConfig config;
   config.locations = "127.0.0.1:1";
-  config.client_feature_code = "qts-test-feature-code";
+  config.client_feature_code = "sts-test-feature-code";
   config.sidecar_path = sidecar;
   config.cust_id = "CUST-TEST";
   config.fund_account_id = "FUND-TEST";
@@ -87,8 +87,8 @@ OrderIntent limit_intent(const ClientOrderId& coi) {
   OrderIntent intent;
   intent.client_order_id = coi;
   intent.instrument_id = "600000.SSE";
-  intent.side = qts::Side::buy;
-  intent.type = qts::OrderType::limit;
+  intent.side = sts::Side::buy;
+  intent.type = sts::OrderType::limit;
   intent.limit_price = 105000;  // 10.50 yuan in 1/10,000
   intent.quantity = 100;
   return intent;
@@ -139,28 +139,28 @@ void map_ord_status_covers_the_archforce_table() {
 void map_order_type_covers_limit_and_market_styles() {
   OrderIntent intent = limit_intent("coi-ot");
   assert(detail::map_order_type(intent) == 'a');  // kFixedNew
-  intent.type = qts::OrderType::market;
-  intent.market_order_style = qts::MarketOrderStyle::own_best;
+  intent.type = sts::OrderType::market;
+  intent.market_order_style = sts::MarketOrderStyle::own_best;
   assert(detail::map_order_type(intent) == 'b');
-  intent.market_order_style = qts::MarketOrderStyle::counterparty_best;
+  intent.market_order_style = sts::MarketOrderStyle::counterparty_best;
   assert(detail::map_order_type(intent) == 'c');
-  intent.market_order_style = qts::MarketOrderStyle::best_five_ioc;
+  intent.market_order_style = sts::MarketOrderStyle::best_five_ioc;
   assert(detail::map_order_type(intent) == 'f');
-  intent.market_order_style = qts::MarketOrderStyle::best_five_to_limit;
+  intent.market_order_style = sts::MarketOrderStyle::best_five_to_limit;
   assert(detail::map_order_type(intent) == 'g');
-  intent.market_order_style = qts::MarketOrderStyle::none;
+  intent.market_order_style = sts::MarketOrderStyle::none;
   assert(detail::map_order_type(intent) == 0);  // explicit style required
 }
 
 void conversions_round_trip_prices_and_quantities() {
-  assert(qts::quantapi_price_to_vendor(105000) == 10.5);
-  assert(qts::quantapi_price_from_vendor(10.5) == 105000);
-  assert(qts::quantapi_price_from_vendor(0.0001) == 1);
-  assert(qts::quantapi_price_from_vendor(10.00005) == 100001 || qts::quantapi_price_from_vendor(10.00005) == 100000);
-  assert(qts::quantapi_quantity_from_vendor(100.0) == 100);
-  assert(qts::quantapi_quantity_from_vendor(100.4) == 100);
-  assert(qts::quantapi_quantity_from_vendor(100.6) == 101);
-  assert(qts::quantapi_quantity_to_vendor(300) == 300.0);
+  assert(sts::quantapi_price_to_vendor(105000) == 10.5);
+  assert(sts::quantapi_price_from_vendor(10.5) == 105000);
+  assert(sts::quantapi_price_from_vendor(0.0001) == 1);
+  assert(sts::quantapi_price_from_vendor(10.00005) == 100001 || sts::quantapi_price_from_vendor(10.00005) == 100000);
+  assert(sts::quantapi_quantity_from_vendor(100.0) == 100);
+  assert(sts::quantapi_quantity_from_vendor(100.4) == 100);
+  assert(sts::quantapi_quantity_from_vendor(100.6) == 101);
+  assert(sts::quantapi_quantity_to_vendor(300) == 300.0);
 }
 
 // ---- lifecycle / config (ADR-053: standby-first) --------------------------
@@ -221,8 +221,8 @@ void login_refuses_empty_and_unknown_identities_without_vendor_traffic() {
 
 void feature_code_keeps_the_mandated_shape() {
   // #<APP>IIP:<ip>;MAC:<mac>;HD:<hd>, missing parts stay empty (ADR-053).
-  const std::string code = detail::generate_feature_code("QTS");
-  assert(has_prefix(code, "#QTSIIP:"));
+  const std::string code = detail::generate_feature_code("STS");
+  assert(has_prefix(code, "#STSIIP:"));
   assert(code.find(";MAC:") != std::string::npos);
   assert(code.find(";HD:") != std::string::npos);
 }
@@ -254,11 +254,11 @@ void submit_rejects_bad_shapes_locally() {
   adapter.submit(bad_instrument);
 
   OrderIntent bad_business = limit_intent("coi-b2");
-  bad_business.trading_business = qts::TradingBusiness::margin_financing;
+  bad_business.trading_business = sts::TradingBusiness::margin_financing;
   adapter.submit(bad_business);
 
   OrderIntent bad_tif = limit_intent("coi-b3");
-  bad_tif.time_in_force = qts::TimeInForce::immediate_or_cancel;
+  bad_tif.time_in_force = sts::TimeInForce::immediate_or_cancel;
   adapter.submit(bad_tif);
 
   OrderIntent bad_qty = limit_intent("coi-b4");
@@ -270,8 +270,8 @@ void submit_rejects_bad_shapes_locally() {
   adapter.submit(bad_price);
 
   OrderIntent bad_style = limit_intent("coi-b6");
-  bad_style.type = qts::OrderType::market;
-  bad_style.market_order_style = qts::MarketOrderStyle::none;
+  bad_style.type = sts::OrderType::market;
+  bad_style.market_order_style = sts::MarketOrderStyle::none;
   adapter.submit(bad_style);
 
   const std::size_t delivered = adapter.drain();
@@ -572,8 +572,8 @@ void recovery_via_request_open_orders_reports_channel_failure() {
   std::remove(sidecar.c_str());
   QuantapiTradeAdapter adapter(make_config(sidecar));
   detail::inject_login(adapter, login_fixture());
-  std::vector<std::pair<qts::AccountId, bool>> recoveries;
-  adapter.set_recovery_complete_handler([&](const qts::AccountId& account, bool success) { recoveries.emplace_back(account, success); });
+  std::vector<std::pair<sts::AccountId, bool>> recoveries;
+  adapter.set_recovery_complete_handler([&](const sts::AccountId& account, bool success) { recoveries.emplace_back(account, success); });
 
   adapter.request_open_orders("FUND-TEST");  // queries cannot send: fail closed
   const std::size_t reports = adapter.drain();
@@ -662,8 +662,8 @@ void drain_without_handlers_keeps_the_queues() {
 // ---- reference-data path (ADR-054) ----------------------------------------
 
 struct SecInfoCapture {
-  qts::AccountId account;
-  std::vector<qts::SecurityInfoRow> rows;
+  sts::AccountId account;
+  std::vector<sts::SecurityInfoRow> rows;
   bool last{false};
 };
 
@@ -692,7 +692,7 @@ void secinfo_sweep_maps_rows_and_batches() {
   QuantapiTradeAdapter adapter(make_config(sidecar));
   detail::inject_login(adapter, login_fixture());
   std::vector<SecInfoCapture> batches;
-  adapter.set_security_info_handler([&](const qts::AccountId& account, const std::vector<qts::SecurityInfoRow>& rows, bool last) { batches.push_back(SecInfoCapture{account, rows, last}); });
+  adapter.set_security_info_handler([&](const sts::AccountId& account, const std::vector<sts::SecurityInfoRow>& rows, bool last) { batches.push_back(SecInfoCapture{account, rows, last}); });
   detail::inject_secinfo(adapter, secinfo_row(7001, "600000", fx::kMarketSse, 1));
   detail::inject_secinfo(adapter, secinfo_row(7002, "000001", fx::kMarketSzse, 1));
   QuantapiSecInfoFixture last;
@@ -704,7 +704,7 @@ void secinfo_sweep_maps_rows_and_batches() {
   assert(batches[0].account == "FUND-TEST");
   assert(batches[0].last);
   assert(batches[0].rows.size() == 2);
-  const qts::SecurityInfoRow& sse = batches[0].rows[0];
+  const sts::SecurityInfoRow& sse = batches[0].rows[0];
   assert(sse.instrument_id == "600000.SSE");
   assert(sse.symbol == "SYM-600000" && sse.security_type == 1);
   assert(sse.price_tick == 100);  // 0.01 yuan
@@ -723,7 +723,7 @@ void secinfo_failed_sweep_delivers_empty_complete() {
   QuantapiTradeAdapter adapter(make_config(sidecar));
   detail::inject_login(adapter, login_fixture());
   std::vector<SecInfoCapture> batches;
-  adapter.set_security_info_handler([&](const qts::AccountId& account, const std::vector<qts::SecurityInfoRow>& rows, bool last) { batches.push_back(SecInfoCapture{account, rows, last}); });
+  adapter.set_security_info_handler([&](const sts::AccountId& account, const std::vector<sts::SecurityInfoRow>& rows, bool last) { batches.push_back(SecInfoCapture{account, rows, last}); });
   QuantapiSecInfoFixture bad;
   bad.request_id = 7101;
   bad.is_last = true;
@@ -740,7 +740,7 @@ void secinfo_without_session_completes_empty() {
   std::remove(sidecar.c_str());
   QuantapiTradeAdapter adapter(make_config(sidecar));  // never logged in
   std::vector<SecInfoCapture> batches;
-  adapter.set_security_info_handler([&](const qts::AccountId& account, const std::vector<qts::SecurityInfoRow>& rows, bool last) { batches.push_back(SecInfoCapture{account, rows, last}); });
+  adapter.set_security_info_handler([&](const sts::AccountId& account, const std::vector<sts::SecurityInfoRow>& rows, bool last) { batches.push_back(SecInfoCapture{account, rows, last}); });
   adapter.request_security_info("FUND-TEST", "");
   adapter.drain();
   assert(batches.size() == 1);
@@ -757,7 +757,7 @@ void secinfo_chunked_drain_never_stalls() {
   std::size_t calls = 0;
   bool saw_non_last = false;
   bool final_last = false;
-  adapter.set_security_info_handler([&](const qts::AccountId&, const std::vector<qts::SecurityInfoRow>& rows, bool last) {
+  adapter.set_security_info_handler([&](const sts::AccountId&, const std::vector<sts::SecurityInfoRow>& rows, bool last) {
     ++calls;
     assert(rows.size() <= 2000);  // kSecInfoDrainChunk bound
     total += rows.size();
@@ -783,8 +783,8 @@ void asset_snapshot_assembles_totals() {
   std::remove(sidecar.c_str());
   QuantapiTradeAdapter adapter(make_config(sidecar));
   detail::inject_login(adapter, login_fixture());
-  std::vector<qts::TradeAssetSnapshot> assets;
-  adapter.set_asset_snapshot_handler([&](const qts::TradeAssetSnapshot& snapshot) { assets.push_back(snapshot); });
+  std::vector<sts::TradeAssetSnapshot> assets;
+  adapter.set_asset_snapshot_handler([&](const sts::TradeAssetSnapshot& snapshot) { assets.push_back(snapshot); });
   QuantapiAssetFixture asset;
   asset.request_id = 7301;
   asset.has_row = true;

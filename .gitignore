@@ -193,7 +193,7 @@ vgcore.*
 html/
 latex/
 
-# QTS unified runtime layout (./bin): built binaries, logs and databases are
+# STS unified runtime layout (./bin): built binaries, logs and databases are
 # local-only; only the yaml configs under ./bin/cfg are tracked (plus empty
 # dir markers so the layout is visible after a fresh clone). NOTE: the
 # directory itself must be re-included first -- a parent excluded by [Bb]in/
@@ -210,7 +210,7 @@ latex/
 !/bin/cfg/*.csv
 !/bin/log/.gitkeep
 !/bin/db/.gitkeep
-# Local runtime backups (qts.sh backup / recover-drill output).
+# Local runtime backups (sts.sh backup / recover-drill output).
 /backup/
 
 # Local-only translated copy of AGENTS.md (not tracked).

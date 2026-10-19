@@ -1,0 +1,63 @@
+# STS default config: bare `./sts_server` (from bin/) reads this file
+# (<exe-dir>/cfg/sts.yaml). Paper/simulated long run with the downstream
+# gateway socket enabled, so bare `./sts_cli` connects immediately.
+# Not for live trading. Copy and adjust for private setups (never commit
+# credentials: broker passwords stay in env only, no gateway passwords).
+environment: paper
+config_version: "1"
+rules_version: "1"
+# Recovery authority: JSONL event stream, appended across restarts.
+# Relative paths resolve against this file's directory (bin/cfg), so the
+# layout works regardless of the working directory the server starts from.
+ledger_file: ../db/sts-ledger.jsonl
+# Query projection: async SQLite read model (sts_admin db --sqlite ...).
+sqlite_file: ../db/sts.db
+# Live-state snapshot for sts_admin state (zero IPC): small JSON written
+# every 50 ticks and at shutdown. Empty disables.
+state_file: ../db/sts-state.json
+accounts:
+  - id: paper
+    broker: simulated
+risk:
+  max_order_quantity: 1000
+  max_order_notional: 10000000
+  trading_enabled: true
+strategies:
+  - id: grid-1
+    type: grid
+    enabled: true
+    account: paper
+    instrument: TEST
+    lower: 900
+    upper: 1100
+    grids: 4
+    quantity: 100
+    start: 1000
+# Execution algorithm shared by all parents (immediate|twap|pov|vwap|iceberg).
+execution:
+  algo: immediate
+# Structured-log file sink: stdout stays, a copy goes to a file derived
+# from this pattern (per day, per startup unique). level: debug/info/error.
+log:
+  file: ../log/sts.log
+  level: info
+# Continuous demo feed: deterministic walk (seed-pinned). ticks == 0 runs
+# until SIGINT; interval_ms paces the loop for tail-able demos.
+demo:
+  enabled: true
+  ticks: 500
+  interval_ms: 100
+  seed: 42
+  depth_levels: 5
+  depth_quantity: 50
+  depth_tick: 1
+  feed: simulated
+# Trading-day boundary (local HH:MM): settle chain fires on crossing.
+trading_day:
+  rollover: "00:01"
+# Downstream gateway: Unix socket serving the sts::gateway API to frontend
+# apps (sts_cli/sts_app/...). Paper accounts stay open (socket permissions
+# are the access control); live-broker accounts log in with their broker
+# password (bind stays loopback without TLS, see runbook).
+gateway:
+  socket: /tmp/sts-gateway.sock

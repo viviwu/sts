@@ -6,12 +6,12 @@ RUN apt-get update -q && apt-get install -y -q --no-install-recommends \
       g++ cmake make git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 # PostgreSQL-gated image (ADR-038): add libpq-dev above and pass
-# -DQTS_ENABLE_PG=ON below. The default stays OFF (zero system deps).
+# -DSTS_ENABLE_PG=ON below. The default stays OFF (zero system deps).
 
-WORKDIR /qts
-COPY . /qts
-RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DQTS_BUILD_TESTS=OFF \
+WORKDIR /sts
+COPY . /sts
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSTS_BUILD_TESTS=OFF \
  && cmake --build build -j"$(nproc)"
 
 # Ledger/sequence files go here; mount a persistent volume in compose.
-RUN mkdir -p /var/lib/qts
+RUN mkdir -p /var/lib/sts

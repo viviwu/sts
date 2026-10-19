@@ -9,11 +9,11 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/broker/order_book.hpp"
+#include "sts/broker/order_book.hpp"
 
 #include <algorithm>
 
-namespace qts {
+namespace sts {
 
 BookFill OrderBook::take(Side side, OrderType type, Price limit, Quantity quantity) {
   std::vector<BookLevel>& levels = (side == Side::buy) ? asks : bids;
@@ -37,4 +37,4 @@ BookFill OrderBook::take(Side side, OrderType type, Price limit, Quantity quanti
   return BookFill{filled, filled > 0 ? notional / filled : 0};
 }
 
-}  // namespace qts
+}  // namespace sts

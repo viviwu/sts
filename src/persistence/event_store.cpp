@@ -9,15 +9,15 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/persistence/event_store.hpp"
+#include "sts/persistence/event_store.hpp"
 
 #include <stdexcept>
 
 #include "nlohmann/json.hpp"
-#include "qts/persistence/pg_store.hpp"
-#include "qts/persistence/sqlite_store.hpp"
+#include "sts/persistence/pg_store.hpp"
+#include "sts/persistence/sqlite_store.hpp"
 
-namespace qts {
+namespace sts {
 
 std::string event_type_name(LedgerEventType type) {
   switch (type) {
@@ -142,4 +142,4 @@ std::unique_ptr<EventStore> open_event_store(const std::string& sqlite_file, con
   return nullptr;
 }
 
-}  // namespace qts
+}  // namespace sts

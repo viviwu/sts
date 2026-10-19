@@ -1,4 +1,4 @@
-# ThreadSanitizer suppressions for QTS (evidence in dev_scheme.md maintenance log).
+# ThreadSanitizer suppressions for STS (evidence in dev_scheme.md maintenance log).
 #
 # Usage (CI tsan job sets this; local runs need it too):
 #   TSAN_OPTIONS="suppressions=$PWD/tools/tsan-suppressions.txt" ctest ...
@@ -15,5 +15,5 @@
 # contract holds: SqliteEventStore takes at most one mutex across sqlite
 # calls, never nests them in conflicting order, and registers zero sqlite
 # callbacks that could re-enter our locks. Revisit immediately if any
-# future report names a qts:: frame acquiring two locks.
+# future report names a sts:: frame acquiring two locks.
 deadlock:pthreadMutexEnter

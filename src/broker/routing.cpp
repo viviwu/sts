@@ -9,13 +9,13 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/broker/routing.hpp"
+#include "sts/broker/routing.hpp"
 
 #include <algorithm>
 #include <chrono>
 #include <string>
 
-namespace qts {
+namespace sts {
 
 RoutingPolicy::RoutingPolicy(RoutingWeights weights)
     : weights_(weights) {}
@@ -491,4 +491,4 @@ void Router::on_channel_recovery(const AccountId& account_id, bool success) {
   }
 }
 
-}  // namespace qts
+}  // namespace sts

@@ -1,10 +1,10 @@
-# QTS live-sim: strategy auto-fire against the SIMULATION counter over the
+# STS live-sim: strategy auto-fire against the SIMULATION counter over the
 # production vendor path (QuantAPI V2.7.1.2). Quotes come from a file
 # (closed-market friendly); every intent routes to the real sim gateway
 # (routing lists quantapi only, so the Router always picks it). The paper
 # channel stays for the strategy book only and never receives orders.
 # Simulation env only: demo IPs/accounts, survives only in vendor builds.
-# Secrets come from QTS_QUANTAPI_* env, never this file.
+# Secrets come from STS_QUANTAPI_* env, never this file.
 environment: paper
 config_version: "1"
 rules_version: "1"
@@ -18,7 +18,7 @@ accounts:
   - id: live
     broker: quantapi
     # Test-env shareholder account (SSE; discovered from the demo login).
-    # Passwords stay in QTS_QUANTAPI_* env, never here.
+    # Passwords stay in STS_QUANTAPI_* env, never here.
     security_account_id: A461951056
 risk:
   max_order_quantity: 200
@@ -49,7 +49,7 @@ quantapi:
   locations: "172.16.109.17:32001"
   order_way: "4"
 log:
-  file: ../log/qts-live-sim.log
+  file: ../log/sts-live-sim.log
   level: info
 demo:
   enabled: true

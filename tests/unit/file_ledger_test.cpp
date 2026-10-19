@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/persistence/file_ledger.hpp"
+#include "sts/persistence/file_ledger.hpp"
 
 #include <atomic>
 #include <cassert>
@@ -20,27 +20,27 @@
 #include <vector>
 
 #include "nlohmann/json.hpp"
-#include "qts/broker/simulated_broker.hpp"
-#include "qts/oms/order_manager.hpp"
-#include "qts/strategy/grid_strategy.hpp"
+#include "sts/broker/simulated_broker.hpp"
+#include "sts/oms/order_manager.hpp"
+#include "sts/strategy/grid_strategy.hpp"
 
 namespace {
 
 std::filesystem::path fresh_temp(const std::string& tag) {
   static std::atomic<unsigned> counter{0};
   const unsigned n = counter.fetch_add(1);
-  const auto path = std::filesystem::temp_directory_path() / ("qts-" + tag + "-" + std::to_string(n) + ".jsonl");
+  const auto path = std::filesystem::temp_directory_path() / ("sts-" + tag + "-" + std::to_string(n) + ".jsonl");
   std::error_code ec;
   std::filesystem::remove(path, ec);
   return path;
 }
 
-qts::LedgerEvent make_rich_event() {
-  qts::LedgerEvent event{};
-  event.type = qts::LedgerEventType::execution_applied;
+sts::LedgerEvent make_rich_event() {
+  sts::LedgerEvent event{};
+  event.type = sts::LedgerEventType::execution_applied;
   event.envelope.trace_id = "trace-rich";
-  event.envelope.source_time = qts::Timestamp{std::chrono::nanoseconds{1'700'000'000'123'456'789LL}};
-  event.envelope.receive_time = qts::Timestamp{std::chrono::nanoseconds{1'700'000'001'000'000'000LL}};
+  event.envelope.source_time = sts::Timestamp{std::chrono::nanoseconds{1'700'000'000'123'456'789LL}};
+  event.envelope.receive_time = sts::Timestamp{std::chrono::nanoseconds{1'700'000'001'000'000'000LL}};
   event.envelope.config_version = "cfg-7";
   event.envelope.rules_version = "rules-9";
   event.envelope.source_message_id = "raw-42";
@@ -49,27 +49,27 @@ qts::LedgerEvent make_rich_event() {
   event.intent.account_id = "paper";
   event.intent.strategy_id = "grid-1";
   event.intent.instrument_id = "600000";
-  event.intent.side = qts::Side::sell;
-  event.intent.type = qts::OrderType::limit;
-  event.intent.time_in_force = qts::TimeInForce::day;
+  event.intent.side = sts::Side::sell;
+  event.intent.type = sts::OrderType::limit;
+  event.intent.time_in_force = sts::TimeInForce::day;
   event.intent.quantity = 200;
   event.intent.limit_price = 12345;
   event.intent.trace_id = "trace-rich";
-  event.intent.exchange = qts::Exchange::sse;
-  event.intent.board = qts::AshareBoard::main;
+  event.intent.exchange = sts::Exchange::sse;
+  event.intent.board = sts::AshareBoard::main;
   event.intent.security_account_id = "A123";
-  event.intent.trading_business = qts::TradingBusiness::cash;
-  event.intent.market_order_style = qts::MarketOrderStyle::none;
+  event.intent.trading_business = sts::TradingBusiness::cash;
+  event.intent.market_order_style = sts::MarketOrderStyle::none;
   event.intent.protection_price = 12000;
   event.intent.parent_client_order_id = "parent-1";
-  event.snapshot = {"SIM-k-rich", "k-rich", qts::OrderStatus::partially_filled, 100, 12300, "", "fill-1", 100, 3};
+  event.snapshot = {"SIM-k-rich", "k-rich", sts::OrderStatus::partially_filled, 100, 12300, "", "fill-1", 100, 3};
   event.snapshot.broker_order_id = "900012345678";
   event.snapshot.reject_code = 0;
   event.snapshot.fee = 250;
   return event;
 }
 
-void assert_same_event(const qts::LedgerEvent& got, const qts::LedgerEvent& want) {
+void assert_same_event(const sts::LedgerEvent& got, const sts::LedgerEvent& want) {
   assert(got.envelope.event_id == want.envelope.event_id);
   assert(got.type == want.type);
   assert(got.envelope.trace_id == want.envelope.trace_id);
@@ -128,23 +128,23 @@ void assert_same_event(const qts::LedgerEvent& got, const qts::LedgerEvent& want
 
 void roundtrip_preserves_every_field() {
   const auto path = fresh_temp("roundtrip");
-  const qts::LedgerEvent want = make_rich_event();
+  const sts::LedgerEvent want = make_rich_event();
   std::uint64_t id = 0;
   {
-    qts::FileEventLedger ledger{path.string()};
+    sts::FileEventLedger ledger{path.string()};
     assert(ledger.latest_event_id() == 0);
     id = ledger.append(want);
     assert(id == 1);
   }
-  qts::FileEventLedger reopened{path.string()};
+  sts::FileEventLedger reopened{path.string()};
   assert(reopened.latest_event_id() == id);
   const auto events = reopened.replay(1);
   assert(events.size() == 1);
-  qts::LedgerEvent expected = want;
+  sts::LedgerEvent expected = want;
   expected.envelope.event_id = id;
   assert_same_event(events[0], expected);
   // Appending after reopen resumes ids monotonically.
-  qts::LedgerEvent second = want;
+  sts::LedgerEvent second = want;
   second.intent.client_order_id = "k-rich-2";
   assert(reopened.append(second) == id + 1);
   std::error_code ec;
@@ -156,7 +156,7 @@ void roundtrip_preserves_every_field() {
 void legacy_snapshot_without_adr032_fields_replays() {
   const auto path = fresh_temp("legacy");
   {
-    qts::FileEventLedger ledger{path.string()};
+    sts::FileEventLedger ledger{path.string()};
     assert(ledger.append(make_rich_event()) == 1);
   }
   nlohmann::json line;
@@ -174,7 +174,7 @@ void legacy_snapshot_without_adr032_fields_replays() {
     std::ofstream out{path.string(), std::ios::trunc};
     out << line.dump() << '\n';
   }
-  qts::FileEventLedger reopened{path.string()};
+  sts::FileEventLedger reopened{path.string()};
   const auto events = reopened.replay(1);
   assert(events.size() == 1);
   const auto& snap = events[0].snapshot;
@@ -195,8 +195,8 @@ void legacy_snapshot_without_adr032_fields_replays() {
 // M14/M15: attestation and switch records round-trip with every field.
 void attestation_and_control_roundtrip() {
   const auto path = fresh_temp("attest-control");
-  qts::LedgerEvent attested{};
-  attested.type = qts::LedgerEventType::reconcile_attested;
+  sts::LedgerEvent attested{};
+  attested.type = sts::LedgerEventType::reconcile_attested;
   attested.envelope.trace_id = "settle-confirm";
   attested.attestation.operator_id = "closer";
   attested.attestation.broker_snapshot_time = "2026-10-11T00:00:00Z";
@@ -204,24 +204,24 @@ void attestation_and_control_roundtrip() {
   attested.attestation.position_dirty = 1;
   attested.attestation.disclosed_fees = 250;
   attested.attestation.note = "daily close";
-  qts::LedgerEvent switched{};
-  switched.type = qts::LedgerEventType::control_applied;
+  sts::LedgerEvent switched{};
+  switched.type = sts::LedgerEventType::control_applied;
   switched.envelope.trace_id = "control-halt";
   switched.control.command = "halt";
   switched.control.blocked_after = true;
   switched.control.source = "inbox";
   std::uint64_t first = 0;
   {
-    qts::FileEventLedger ledger{path.string()};
+    sts::FileEventLedger ledger{path.string()};
     first = ledger.append(attested);
     assert(ledger.append(switched) == first + 1);
   }
-  qts::FileEventLedger reopened{path.string()};
+  sts::FileEventLedger reopened{path.string()};
   const auto events = reopened.replay(1);
   assert(events.size() == 2);
-  qts::LedgerEvent want_attested = attested;
+  sts::LedgerEvent want_attested = attested;
   want_attested.envelope.event_id = first;
-  qts::LedgerEvent want_switched = switched;
+  sts::LedgerEvent want_switched = switched;
   want_switched.envelope.event_id = first + 1;
   assert_same_event(events[0], want_attested);
   assert_same_event(events[1], want_switched);
@@ -231,14 +231,14 @@ void attestation_and_control_roundtrip() {
 
 void funding_roundtrips_with_cash_and_position() {
   const auto path = fresh_temp("funding");
-  qts::LedgerEvent cash{};
-  cash.type = qts::LedgerEventType::funding_deposited;
+  sts::LedgerEvent cash{};
+  cash.type = sts::LedgerEventType::funding_deposited;
   cash.envelope.trace_id = "funding";
   cash.envelope.config_version = "1";
   cash.envelope.rules_version = "1";
   cash.funding.cash = 10'000'000;
-  qts::LedgerEvent deposit{};
-  deposit.type = qts::LedgerEventType::funding_deposited;
+  sts::LedgerEvent deposit{};
+  deposit.type = sts::LedgerEventType::funding_deposited;
   deposit.envelope.trace_id = "funding";
   deposit.envelope.config_version = "1";
   deposit.envelope.rules_version = "1";
@@ -248,22 +248,22 @@ void funding_roundtrips_with_cash_and_position() {
   std::uint64_t cash_id = 0;
   std::uint64_t deposit_id = 0;
   {
-    qts::FileEventLedger ledger{path.string()};
+    sts::FileEventLedger ledger{path.string()};
     cash_id = ledger.append(cash);
     deposit_id = ledger.append(deposit);
     assert(deposit_id == cash_id + 1);
   }
-  qts::FileEventLedger reopened{path.string()};
+  sts::FileEventLedger reopened{path.string()};
   const auto events = reopened.replay(1);
   assert(events.size() == 2);
-  assert(events[0].type == qts::LedgerEventType::funding_deposited);
+  assert(events[0].type == sts::LedgerEventType::funding_deposited);
   assert(events[0].funding.cash == 10'000'000 && events[0].funding.quantity == 0);
   assert(events[1].funding.instrument == "TEST");
   assert(events[1].funding.quantity == 10'000 && events[1].funding.average_cost == 1'000);
   assert(events[1].funding.cash == 0);
-  qts::LedgerEvent expected_cash = cash;
+  sts::LedgerEvent expected_cash = cash;
   expected_cash.envelope.event_id = cash_id;
-  qts::LedgerEvent expected_deposit = deposit;
+  sts::LedgerEvent expected_deposit = deposit;
   expected_deposit.envelope.event_id = deposit_id;
   assert_same_event(events[0], expected_cash);
   assert_same_event(events[1], expected_deposit);
@@ -276,7 +276,7 @@ void funding_roundtrips_with_cash_and_position() {
 void pre_funding_ledger_replays_empty_funding() {
   const auto path = fresh_temp("pre-funding");
   {
-    qts::FileEventLedger ledger{path.string()};
+    sts::FileEventLedger ledger{path.string()};
     assert(ledger.append(make_rich_event()) == 1);
   }
   nlohmann::json line;
@@ -291,7 +291,7 @@ void pre_funding_ledger_replays_empty_funding() {
     std::ofstream out{path.string(), std::ios::trunc};
     out << line.dump() << '\n';
   }
-  qts::FileEventLedger reopened{path.string()};
+  sts::FileEventLedger reopened{path.string()};
   const auto events = reopened.replay(1);
   assert(events.size() == 1);
   assert(events[0].funding.strategy.empty() && events[0].funding.instrument.empty());
@@ -304,66 +304,66 @@ void pre_funding_ledger_replays_empty_funding() {
 void restart_resumes_ids_and_replay() {
   const auto path = fresh_temp("resume");
   {
-    qts::FileEventLedger ledger{path.string()};
-    qts::LedgerEvent event{};
+    sts::FileEventLedger ledger{path.string()};
+    sts::LedgerEvent event{};
     event.intent.client_order_id = "a";
     assert(ledger.append(event) == 1);
     assert(ledger.append(event) == 2);
   }
   {
-    qts::FileEventLedger ledger{path.string()};
+    sts::FileEventLedger ledger{path.string()};
     assert(ledger.latest_event_id() == 2);
     assert(ledger.replay(1).size() == 2);
     assert(ledger.replay(2).size() == 1);
     assert(ledger.replay(3).empty());
-    qts::LedgerEvent event{};
+    sts::LedgerEvent event{};
     event.intent.client_order_id = "b";
     assert(ledger.append(event) == 3);
     assert(ledger.latest_event_id() == 3);
   }
-  qts::FileEventLedger ledger{path.string()};
+  sts::FileEventLedger ledger{path.string()};
   assert(ledger.latest_event_id() == 3);
   assert(ledger.replay(1).size() == 3);
   std::error_code ec;
   std::filesystem::remove(path, ec);
 }
 
-qts::OrderIntent make_intent(const std::string& id) {
-  qts::OrderIntent intent{id, "paper", "test", "TEST", qts::Side::buy, qts::OrderType::limit, qts::TimeInForce::day, 10, 100};
+sts::OrderIntent make_intent(const std::string& id) {
+  sts::OrderIntent intent{id, "paper", "test", "TEST", sts::Side::buy, sts::OrderType::limit, sts::TimeInForce::day, 10, 100};
   intent.trace_id = "trace-" + id;
   return intent;
 }
 
 void file_backed_oms_restart() {
   const auto path = fresh_temp("oms-restart");
-  qts::LedgerSnapshot snapshot{};
-  std::vector<qts::ExecutionReport> original_open;
+  sts::LedgerSnapshot snapshot{};
+  std::vector<sts::ExecutionReport> original_open;
   {
-    qts::EventBus events1;
-    qts::SimulatedBroker broker1{events1};  // no reference price: order stays live
-    qts::RiskEngine risk1{{100, 10'000, true}};
-    qts::FileEventLedger ledger{path.string()};
-    qts::OrderManager oms1{broker1, risk1, events1, &ledger};
+    sts::EventBus events1;
+    sts::SimulatedBroker broker1{events1};  // no reference price: order stays live
+    sts::RiskEngine risk1{{100, 10'000, true}};
+    sts::FileEventLedger ledger{path.string()};
+    sts::OrderManager oms1{broker1, risk1, events1, &ledger};
     assert(oms1.submit(make_intent("kf1")));
     snapshot.last_event_id = ledger.latest_event_id();
     snapshot.open_orders = oms1.open_orders();
     assert(snapshot.open_orders.size() == 1);
-    assert(oms1.on_execution_report({"SIM-kf1", "kf1", qts::OrderStatus::partially_filled, 4, 100, "", "fill-1"}));
+    assert(oms1.on_execution_report({"SIM-kf1", "kf1", sts::OrderStatus::partially_filled, 4, 100, "", "fill-1"}));
     original_open = oms1.open_orders();
   }
   // New process: same file, restore from snapshot, replay newer events.
-  qts::EventBus events2;
-  qts::SimulatedBroker broker2{events2};
-  qts::RiskEngine risk2{{100, 10'000, true}};
-  qts::FileEventLedger ledger2{path.string()};
-  qts::OrderManager oms2{broker2, risk2, events2};
+  sts::EventBus events2;
+  sts::SimulatedBroker broker2{events2};
+  sts::RiskEngine risk2{{100, 10'000, true}};
+  sts::FileEventLedger ledger2{path.string()};
+  sts::OrderManager oms2{broker2, risk2, events2};
   assert(oms2.restore_order(make_intent("kf1"), snapshot.open_orders[0]));
   for (const auto& e : ledger2.replay(snapshot.last_event_id + 1)) {
-    if (e.type == qts::LedgerEventType::execution_applied) assert(oms2.on_execution_report(e.snapshot));
+    if (e.type == sts::LedgerEventType::execution_applied) assert(oms2.on_execution_report(e.snapshot));
   }
-  const qts::ExecutionReport* rebuilt = oms2.find("kf1");
+  const sts::ExecutionReport* rebuilt = oms2.find("kf1");
   assert(rebuilt != nullptr);
-  assert(rebuilt->status == qts::OrderStatus::partially_filled);
+  assert(rebuilt->status == sts::OrderStatus::partially_filled);
   assert(rebuilt->cumulative_quantity == 4);
   assert(rebuilt->version == original_open[0].version);
   assert(rebuilt->order_id == original_open[0].order_id);
@@ -374,13 +374,13 @@ void file_backed_oms_restart() {
 void grid_drill_persists_and_reopens() {
   const auto path = fresh_temp("e2e");
   {
-    qts::EventBus events;
-    qts::SimulatedBroker broker{events};
+    sts::EventBus events;
+    sts::SimulatedBroker broker{events};
     broker.set_starting_cash(1'000'000);
-    qts::RiskEngine risk{{10'000, 0, true}};
-    qts::FileEventLedger ledger{path.string()};
-    qts::OrderManager oms{broker, risk, events, &ledger};
-    qts::GridConfig config{};
+    sts::RiskEngine risk{{10'000, 0, true}};
+    sts::FileEventLedger ledger{path.string()};
+    sts::OrderManager oms{broker, risk, events, &ledger};
+    sts::GridConfig config{};
     config.strategy_id = "grid-1";
     config.account_id = "paper";
     config.instrument_id = "TEST";
@@ -388,13 +388,13 @@ void grid_drill_persists_and_reopens() {
     config.upper = 1'100;
     config.grids = 4;
     config.quantity_per_order = 100;
-    qts::GridStrategy strategy{config, 1'000};
-    const std::vector<qts::Price> prices{1'000, 950, 900, 950, 1'000, 1'050, 1'100};
+    sts::GridStrategy strategy{config, 1'000};
+    const std::vector<sts::Price> prices{1'000, 950, 900, 950, 1'000, 1'050, 1'100};
     std::uint64_t sequence = 0;
     int submitted = 0;
-    for (const qts::Price price : prices) {
+    for (const sts::Price price : prices) {
       broker.set_reference_price("TEST", price);
-      qts::QuoteEvent quote{};
+      sts::QuoteEvent quote{};
       quote.instrument_id = "TEST";
       quote.last_price = price;
       quote.sequence = ++sequence;
@@ -407,7 +407,7 @@ void grid_drill_persists_and_reopens() {
     assert(ledger.latest_event_id() == 18);
     assert(oms.open_orders().empty());
   }
-  qts::FileEventLedger reopened{path.string()};
+  sts::FileEventLedger reopened{path.string()};
   assert(reopened.latest_event_id() == 18);
   assert(reopened.replay(1).size() == 18);
   std::error_code ec;
@@ -422,7 +422,7 @@ void corrupt_line_is_rejected() {
   }
   bool threw = false;
   try {
-    qts::FileEventLedger ledger{path.string()};
+    sts::FileEventLedger ledger{path.string()};
   } catch (const std::runtime_error& e) {
     threw = std::string{e.what()}.find(path.string()) != std::string::npos;
   }
@@ -433,21 +433,21 @@ void corrupt_line_is_rejected() {
 
 void open_snapshot_roundtrips() {
   const auto path = fresh_temp("snapshot");
-  const qts::LedgerEvent rich = make_rich_event();
-  qts::OpenSnapshot snapshot{};
+  const sts::LedgerEvent rich = make_rich_event();
+  sts::OpenSnapshot snapshot{};
   snapshot.ledger_bytes = 12345;
   snapshot.last_event_id = 7;
   snapshot.config_version = "cfg-7";
   snapshot.rules_version = "rules-9";
   snapshot.opens.emplace_back(rich.intent, rich.snapshot);
-  qts::write_open_snapshot(path.string(), snapshot);
-  const qts::OpenSnapshot back = qts::read_open_snapshot(path.string());
+  sts::write_open_snapshot(path.string(), snapshot);
+  const sts::OpenSnapshot back = sts::read_open_snapshot(path.string());
   assert(back.ledger_bytes == 12345 && back.last_event_id == 7);
   assert(back.config_version == "cfg-7" && back.rules_version == "rules-9");
   assert(back.opens.size() == 1);
   assert(back.opens[0].first.client_order_id == "k-rich");
   assert(back.opens[0].first.strategy_id == "grid-1");
-  assert(back.opens[0].second.status == qts::OrderStatus::partially_filled);
+  assert(back.opens[0].second.status == sts::OrderStatus::partially_filled);
   assert(back.opens[0].second.cumulative_quantity == 100);
   std::error_code ec;
   std::filesystem::remove(path, ec);
@@ -456,7 +456,7 @@ void open_snapshot_roundtrips() {
 void open_snapshot_missing_or_corrupt_throws() {
   bool threw = false;
   try {
-    (void)qts::read_open_snapshot("/nonexistent/qts-snapshot.json");
+    (void)sts::read_open_snapshot("/nonexistent/sts-snapshot.json");
   } catch (const std::runtime_error&) {
     threw = true;
   }
@@ -468,7 +468,7 @@ void open_snapshot_missing_or_corrupt_throws() {
   }
   threw = false;
   try {
-    (void)qts::read_open_snapshot(path.string());
+    (void)sts::read_open_snapshot(path.string());
   } catch (const std::runtime_error&) {
     threw = true;
   }

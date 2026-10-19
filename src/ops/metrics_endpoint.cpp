@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/ops/metrics_endpoint.hpp"
+#include "sts/ops/metrics_endpoint.hpp"
 
 #include <netdb.h>
 #include <sys/select.h>
@@ -20,7 +20,7 @@
 #include <sstream>
 #include <stdexcept>
 
-namespace qts {
+namespace sts {
 namespace {
 
 int open_listener(const std::string& host, const std::string& service, std::uint16_t& bound_port) {
@@ -132,4 +132,4 @@ void MetricsEndpoint::serve_one(int conn) {
   send_all(conn, kNotFound);
 }
 
-}  // namespace qts
+}  // namespace sts

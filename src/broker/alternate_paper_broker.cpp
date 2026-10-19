@@ -9,13 +9,13 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/broker/alternate_paper_broker.hpp"
+#include "sts/broker/alternate_paper_broker.hpp"
 
 #include <fstream>
 #include <stdexcept>
 #include <string>
 
-namespace qts {
+namespace sts {
 
 AlternatePaperBroker::AlternatePaperBroker(EventBus& events, std::string seq_path)
     : events_{events},
@@ -203,4 +203,4 @@ void AlternatePaperBroker::load_seq() {
   next_seq_ = stored;
 }
 
-}  // namespace qts
+}  // namespace sts

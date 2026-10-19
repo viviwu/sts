@@ -24,10 +24,10 @@
 #include <string>
 #include <string_view>
 
-#include "qts/broker/quantapi_fixtures.hpp"
-#include "qts/broker/trade_api.hpp"
+#include "sts/broker/quantapi_fixtures.hpp"
+#include "sts/broker/trade_api.hpp"
 
-namespace qts {
+namespace sts {
 
 // Session configuration. ADR-053: customer identity/password are NEVER
 // configured — the trader passes them at gateway login and the counter
@@ -172,4 +172,4 @@ class QuantapiTradeAdapter final : public TradeApi {
   std::unique_ptr<Impl> impl_;
 };
 
-}  // namespace qts
+}  // namespace sts

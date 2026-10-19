@@ -9,19 +9,19 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/research/reconcile.hpp"
+#include "sts/research/reconcile.hpp"
 
 #include <cassert>
 #include <string>
 
 namespace {
 
-qts::OrderIntent buy(const std::string& id, qts::Quantity qty, qts::Price price) {
-  return qts::OrderIntent{id, "paper", "test", "TEST", qts::Side::buy, qts::OrderType::limit, qts::TimeInForce::day, qty, price};
+sts::OrderIntent buy(const std::string& id, sts::Quantity qty, sts::Price price) {
+  return sts::OrderIntent{id, "paper", "test", "TEST", sts::Side::buy, sts::OrderType::limit, sts::TimeInForce::day, qty, price};
 }
 
-qts::TradeAccountSnapshot broker_snapshot(qts::Price cash) {
-  qts::TradeAccountSnapshot snapshot{};
+sts::TradeAccountSnapshot broker_snapshot(sts::Price cash) {
+  sts::TradeAccountSnapshot snapshot{};
   snapshot.account_id = "paper";
   snapshot.total_asset = cash;
   snapshot.available_cash = cash;
@@ -30,70 +30,70 @@ qts::TradeAccountSnapshot broker_snapshot(qts::Price cash) {
 }
 
 void matching_books_are_clean() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.apply_fill(buy("b1", 100, 900), 100, 900);
   auto broker = broker_snapshot(book.cash());
-  qts::PositionSnapshot position{};
+  sts::PositionSnapshot position{};
   position.instrument_id = "TEST";
   position.total_quantity = 100;
   position.sellable_quantity = 0;
   position.average_cost = 900;
   broker.positions.push_back(position);
-  const auto diff = qts::reconcile::diff_books(book, broker);
+  const auto diff = sts::reconcile::diff_books(book, broker);
   assert(diff.clean() && diff.cash_dirty() == 0 && diff.position_dirty() == 0);
-  assert(diff.qts_fees_disclosed == 0);
+  assert(diff.sts_fees_disclosed == 0);
   // Broker-only fields disclose without judging.
   broker.total_asset = 5;
   broker.frozen_cash = 7;
-  const auto disclosed = qts::reconcile::diff_books(book, broker);
+  const auto disclosed = sts::reconcile::diff_books(book, broker);
   assert(disclosed.clean());
 }
 
 void cash_gap_is_dirty() {
-  qts::Portfolio book{1'000'000};
-  const auto diff = qts::reconcile::diff_books(book, broker_snapshot(999'000));
+  sts::Portfolio book{1'000'000};
+  const auto diff = sts::reconcile::diff_books(book, broker_snapshot(999'000));
   assert(!diff.clean() && diff.cash_dirty() == 1 && diff.position_dirty() == 0);
-  assert(diff.cash[0].field == "available_cash" && diff.cash[0].qts_value == 1'000'000 && diff.cash[0].broker_value == 999'000);
+  assert(diff.cash[0].field == "available_cash" && diff.cash[0].sts_value == 1'000'000 && diff.cash[0].broker_value == 999'000);
 }
 
 void position_gaps_cover_both_sides() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.apply_fill(buy("b1", 100, 900), 100, 900);
   auto broker = broker_snapshot(book.cash());
-  qts::PositionSnapshot ghost{};
+  sts::PositionSnapshot ghost{};
   ghost.instrument_id = "GHOST";
   ghost.total_quantity = 50;
   ghost.sellable_quantity = 50;
   ghost.average_cost = 100;
   broker.positions.push_back(ghost);  // broker-only holding
-  auto diff = qts::reconcile::diff_books(book, broker);
+  auto diff = sts::reconcile::diff_books(book, broker);
   assert(!diff.clean() && diff.position_dirty() == 2);                            // TEST missing at broker, GHOST missing in book
   assert(diff.positions.size() == 2 && diff.positions[0].instrument == "GHOST");  // sorted universe
   // Same instrument, wrong average: still dirty, frozen disclosed.
-  qts::PositionSnapshot wrong{};
+  sts::PositionSnapshot wrong{};
   wrong.instrument_id = "TEST";
   wrong.total_quantity = 100;
   wrong.average_cost = 950;
   wrong.frozen_quantity = 10;
   auto broker2 = broker_snapshot(book.cash());
   broker2.positions.push_back(wrong);
-  const auto diff2 = qts::reconcile::diff_books(book, broker2);
+  const auto diff2 = sts::reconcile::diff_books(book, broker2);
   assert(!diff2.clean() && diff2.position_dirty() == 1);
-  assert(diff2.positions[0].broker_frozen == 10 && diff2.positions[0].qts_avg == 900);
+  assert(diff2.positions[0].broker_frozen == 10 && diff2.positions[0].sts_avg == 900);
 }
 
 void fees_are_disclosed_not_judged() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.apply_fill(buy("b1", 100, 900), 100, 900);
   book.apply_fee(250);
   auto broker = broker_snapshot(book.cash());
-  qts::PositionSnapshot position{};
+  sts::PositionSnapshot position{};
   position.instrument_id = "TEST";
   position.total_quantity = 100;
   position.average_cost = 900;
   broker.positions.push_back(position);
-  const auto diff = qts::reconcile::diff_books(book, broker);
-  assert(diff.clean() && diff.qts_fees_disclosed == 250);
+  const auto diff = sts::reconcile::diff_books(book, broker);
+  assert(diff.clean() && diff.sts_fees_disclosed == 250);
 }
 
 }  // namespace

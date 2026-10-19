@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/persistence/sqlite_store.hpp"
+#include "sts/persistence/sqlite_store.hpp"
 
 #include <sqlite3.h>
 
@@ -17,9 +17,9 @@
 #include <stdexcept>
 
 #include "nlohmann/json.hpp"
-#include "qts/portfolio/portfolio.hpp"
+#include "sts/portfolio/portfolio.hpp"
 
-namespace qts {
+namespace sts {
 namespace {
 
 using nlohmann::json;
@@ -441,4 +441,4 @@ std::uint64_t SqliteEventStore::cached_instrument_count() {
   return query_single_u64(impl_->db, "SELECT COUNT(*) FROM instruments_cache;");
 }
 
-}  // namespace qts
+}  // namespace sts

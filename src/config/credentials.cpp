@@ -9,12 +9,12 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/config/credentials.hpp"
+#include "sts/config/credentials.hpp"
 
 #include <cstdlib>
 #include <stdexcept>
 
-namespace qts {
+namespace sts {
 namespace {
 
 std::string getenv_value(const std::string& name) {
@@ -55,4 +55,4 @@ bool try_load_broker_credentials(const std::string& prefix, BrokerCredentials& o
   return true;
 }
 
-}  // namespace qts
+}  // namespace sts

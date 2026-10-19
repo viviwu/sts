@@ -1,4 +1,4 @@
-# QTS long-run demo (M9, ADR-034): simulated walk -> grid -> risk -> OMS ->
+# STS long-run demo (M9, ADR-034): simulated walk -> grid -> risk -> OMS ->
 # simulated matching, with JSONL ledger + log file + SQLite projection.
 # Not for live trading.
 environment: paper
@@ -7,10 +7,10 @@ rules_version: "1"
 # Recovery authority: JSONL event stream, appended across restarts.
 # Relative paths resolve against this file's directory (bin/cfg), so the
 # layout works regardless of the working directory the gateway starts from.
-ledger_file: ../db/qts-demo-ledger.jsonl
-# Query projection: async SQLite read model (qts_admin db --sqlite ...).
-sqlite_file: ../db/qts-demo.db
-# Live-state snapshot for qts_admin state (zero IPC): small JSON written
+ledger_file: ../db/sts-demo-ledger.jsonl
+# Query projection: async SQLite read model (sts_admin db --sqlite ...).
+sqlite_file: ../db/sts-demo.db
+# Live-state snapshot for sts_admin state (zero IPC): small JSON written
 # every 50 ticks and at shutdown. Empty disables.
 state_file: ../db/live-state.json
 accounts:
@@ -45,11 +45,11 @@ execution:
 # Structured-log file sink (M9-1/M9.2): stdout stays, a copy goes to a file
 # derived from this pattern. The resolved name always differs per day and
 # per startup: strftime % directives expand, then -YYYYMMDD-HHMMSS-pid<PID>
-# is inserted (e.g. bin/log/qts-demo-20261002-123918-pid6815.log); a long run
+# is inserted (e.g. bin/log/sts-demo-20261002-123918-pid6815.log); a long run
 # crossing midnight rotates automatically. The resolved path is printed in
 # the first stdout line ("log_file"). level: debug/info/warn/error.
 log:
-  file: ../log/qts-demo.log
+  file: ../log/sts-demo.log
   level: info
 # Continuous demo feed (M9-0): deterministic walk (seed-pinned), ticks == 0
 # runs until SIGINT. interval_ms paces the loop for tail-able demos.
@@ -126,23 +126,23 @@ trading_day:
 # paper_sim:
 #   fee_file: fees-ashare.yaml
 # Operator inbox (M11-4, optional, empty = disabled): one JSON command per
-# line, appended by `qts_admin send --inbox ...` while the server runs
+# line, appended by `sts_admin send --inbox ...` while the server runs
 # (cancel/cancel-all/block-*/halt/resume/replace). Cancel commands land in
 # the ledger audit trail; switch commands are structured-log audited.
 # control:
 #   inbox: ../db/control-inbox.jsonl
 # Live query socket (observability, optional, empty = disabled): when set,
-# the server answers `qts_admin state --socket ...` with freshly built
+# the server answers `sts_admin state --socket ...` with freshly built
 # live-state JSON once per tick (tick-serviced, no extra thread, no races).
 # Unix-domain socket; filesystem permissions are the access control.
 # control:
-#   socket: ../db/qts-query.sock
+#   socket: ../db/sts-query.sock
 # Downstream gateway (ADR-050, optional, empty socket+bind = disabled):
-# Unix socket and/or TCP (same JSON line protocol) serving the qts::gateway API
-# (submit/strategy/query/subscribe) to frontend apps (qts_cli/qts_app/...).
+# Unix socket and/or TCP (same JSON line protocol) serving the sts::gateway API
+# (submit/strategy/query/subscribe) to frontend apps (sts_cli/sts_app/...).
 # No passwords live here by design: paper accounts stay open (socket
 # permissions are the access control); live-broker accounts log in with their
 # broker password (env, never yaml). bind stays loopback without TLS.
 # gateway:
-#   socket: ../db/qts-gateway.sock
+#   socket: ../db/sts-gateway.sock
 #   bind: 127.0.0.1:19001

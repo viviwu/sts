@@ -9,11 +9,11 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/strategy/grid_strategy.hpp"
+#include "sts/strategy/grid_strategy.hpp"
 
 #include <stdexcept>
 
-namespace qts {
+namespace sts {
 
 GridStrategy::GridStrategy(GridConfig config, Price start_price)
     : config_{std::move(config)} {
@@ -73,4 +73,4 @@ OrderIntent GridStrategy::make_order(Side side, Price price) {
   return intent;
 }
 
-}  // namespace qts
+}  // namespace sts

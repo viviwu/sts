@@ -9,17 +9,17 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/broker/channel_factory.hpp"
+#include "sts/broker/channel_factory.hpp"
 
 #include <chrono>
 #include <filesystem>
 #include <stdexcept>
 
-#include "qts/broker/alternate_paper_broker.hpp"
-#include "qts/broker/simulated_broker.hpp"
-#include "qts/ops/control.hpp"
+#include "sts/broker/alternate_paper_broker.hpp"
+#include "sts/broker/simulated_broker.hpp"
+#include "sts/ops/control.hpp"
 
-namespace qts {
+namespace sts {
 namespace {
 
 std::string seq_dir_for(const AppConfig& config) {
@@ -213,4 +213,4 @@ ChannelSet build_channels(const AppConfig& config, EventBus& events, const Clock
   return set;
 }
 
-}  // namespace qts
+}  // namespace sts

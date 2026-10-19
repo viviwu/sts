@@ -9,9 +9,9 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/core/event_bus.hpp"
+#include "sts/core/event_bus.hpp"
 
-namespace qts {
+namespace sts {
 
 EventBus::Subscription EventBus::subscribe_execution(ExecutionHandler handler) {
   std::scoped_lock lock{mutex_};
@@ -42,4 +42,4 @@ void EventBus::publish(const ExecutionReport& report) const {
   }
 }
 
-}  // namespace qts
+}  // namespace sts

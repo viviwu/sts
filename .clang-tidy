@@ -29,8 +29,8 @@ WarningsAsErrors: ''
 # Only our own tree: diagnostics are located by absolute path, and the
 # fetched third-party sources live under build*/_deps (whose
 # include/yaml-cpp, include/nlohmann, ... must never be gated). TUs come
-# from src/apps only; headers from include/qts only.
-HeaderFilterRegex: '/(src|apps|tests)/|/include/qts/'
+# from src/apps only; headers from include/sts only.
+HeaderFilterRegex: '/(src|apps|tests)/|/include/sts/'
 FormatStyle:     none
 
 CheckOptions:    

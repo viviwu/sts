@@ -14,9 +14,9 @@
 #include <string>
 #include <utility>
 
-#include "qts/execution/execution_api.hpp"
+#include "sts/execution/execution_api.hpp"
 
-namespace qts {
+namespace sts {
 
 namespace {
 
@@ -574,4 +574,4 @@ std::vector<ClientOrderId> IcebergAlgorithm::replace_parent(const OrderIntent& u
   return cancelled;
 }
 
-}  // namespace qts
+}  // namespace sts

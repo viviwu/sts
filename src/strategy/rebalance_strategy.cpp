@@ -9,12 +9,12 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/strategy/rebalance_strategy.hpp"
+#include "sts/strategy/rebalance_strategy.hpp"
 
 #include <algorithm>
 #include <stdexcept>
 
-namespace qts {
+namespace sts {
 
 RebalanceStrategy::RebalanceStrategy(RebalanceConfig config)
     : config_{std::move(config)} {
@@ -92,4 +92,4 @@ OrderIntent RebalanceStrategy::make_order(const RebalanceTarget& target, Side si
   return intent;
 }
 
-}  // namespace qts
+}  // namespace sts

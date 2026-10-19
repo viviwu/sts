@@ -1,4 +1,4 @@
-# QTS strict A-share business demo: master + T+1 + fees + opening inventory
+# STS strict A-share business demo: master + T+1 + fees + opening inventory
 # all ON (demo.yaml keeps them opt-in for backward compat).
 # Path: simulated walk -> grid -> risk -> OMS -> simulated matching,
 # with JSONL ledger + log file + SQLite projection. Not for live trading.
@@ -8,9 +8,9 @@ rules_version: "1"
 # Recovery authority: JSONL event stream, appended across restarts.
 # Relative paths resolve against this file's directory (bin/cfg).
 ledger_file: ../db/ashare-ledger.jsonl
-# Query projection: async SQLite read model (qts_admin db --sqlite ...).
+# Query projection: async SQLite read model (sts_admin db --sqlite ...).
 sqlite_file: ../db/ashare.db
-# Live-state snapshot for qts_admin state (zero IPC).
+# Live-state snapshot for sts_admin state (zero IPC).
 state_file: ../db/ashare-state.json
 accounts:
   - id: paper
@@ -42,7 +42,7 @@ execution:
 # Structured-log file sink: stdout stays, a copy goes to a per-day,
 # per-startup unique file derived from this pattern.
 log:
-  file: ../log/qts-ashare.log
+  file: ../log/sts-ashare.log
   level: info
 # Continuous demo feed: deterministic walk (seed-pinned).
 demo:

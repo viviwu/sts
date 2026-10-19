@@ -9,19 +9,19 @@
   ******************************************************************************
   */
 // clang-format on
-// qts_ama_readonly — M7-2b 联调工具: AMA 行情只读链路 (ADR-029).
+// sts_ama_readonly — M7-2b 联调工具: AMA 行情只读链路 (ADR-029).
 //
 // Boots the AmaQuoteAdapter against a live UMS, subscribes exact codes,
 // pumps drain() on this thread and emits one structured log line per
 // QuoteEvent plus periodic counters. Read-only: it never touches TradeApi.
 //
 // Credentials come from the environment only (never argv, never files,
-// never the repo): QTS_AMA_CUST_ID = UMS username, QTS_AMA_PASSWORD =
-// UMS password, QTS_AMA_FUND_ACCOUNT_ID = placeholder required by the
+// never the repo): STS_AMA_CUST_ID = UMS username, STS_AMA_PASSWORD =
+// UMS password, STS_AMA_FUND_ACCOUNT_ID = placeholder required by the
 // fail-closed credential policy (unused for market data).
 //
 // Usage:
-//   qts_ama_readonly --ums 192.168.1.101:11001[,ip:port...] \
+//   sts_ama_readonly --ums 192.168.1.101:11001[,ip:port...] \
 //                    --instruments 600000.SSE,000001.SZSE \
 //                    [--seconds 30] [--staleness-ms 3000]
 //
@@ -38,8 +38,8 @@
 #include <vector>
 
 #include "ama_quote_adapter.hpp"
-#include "qts/config/credentials.hpp"
-#include "qts/ops/log.hpp"
+#include "sts/config/credentials.hpp"
+#include "sts/ops/log.hpp"
 
 namespace {
 
@@ -113,35 +113,35 @@ int main(int argc, char** argv) {
   std::string error;
   if (!parse_args(argc, argv, options, error)) {
     if (!error.empty()) std::cerr << "error: " << error << "\n";
-    std::cerr << "usage: qts_ama_readonly --ums <ip:port[,ip:port...]> --instruments <id[,id...]> [--seconds N] [--staleness-ms N]\n";
+    std::cerr << "usage: sts_ama_readonly --ums <ip:port[,ip:port...]> --instruments <id[,id...]> [--seconds N] [--staleness-ms N]\n";
     return 2;
   }
 
   std::signal(SIGINT, on_signal);
   std::signal(SIGTERM, on_signal);
 
-  qts::AmaSessionConfig config;
+  sts::AmaSessionConfig config;
   try {
-    const qts::BrokerCredentials credentials = qts::load_broker_credentials("QTS_AMA");
+    const sts::BrokerCredentials credentials = sts::load_broker_credentials("STS_AMA");
     config.username = credentials.cust_id;
     config.password = credentials.password;
   } catch (const std::exception& ex) {
-    qts::log::error(std::cout, "ama_readonly", "credentials unavailable", {{"detail", ex.what()}});
+    sts::log::error(std::cout, "ama_readonly", "credentials unavailable", {{"detail", ex.what()}});
     return 2;
   }
   for (const std::string& endpoint : split(options.ums, ',')) {
     const std::size_t colon = endpoint.rfind(':');
     if (colon == std::string::npos || colon == 0 || colon + 1 >= endpoint.size()) {
-      qts::log::error(std::cout, "ama_readonly", "malformed UMS endpoint", {{"endpoint", endpoint}});
+      sts::log::error(std::cout, "ama_readonly", "malformed UMS endpoint", {{"endpoint", endpoint}});
       return 2;
     }
-    config.ums_servers.push_back(qts::AmaUmsServer{endpoint.substr(0, colon), static_cast<std::uint16_t>(std::stoi(endpoint.substr(colon + 1)))});
+    config.ums_servers.push_back(sts::AmaUmsServer{endpoint.substr(0, colon), static_cast<std::uint16_t>(std::stoi(endpoint.substr(colon + 1)))});
   }
   config.max_staleness = std::chrono::milliseconds{options.staleness_ms};
 
-  qts::AmaQuoteAdapter adapter;
-  adapter.set_quote_handler([](const qts::QuoteEvent& event) {
-    qts::log::info(std::cout, "ama_quote", "quote",
+  sts::AmaQuoteAdapter adapter;
+  adapter.set_quote_handler([](const sts::QuoteEvent& event) {
+    sts::log::info(std::cout, "ama_quote", "quote",
                    {
                        {"instrument", event.instrument_id},
                        {"bid", std::to_string(event.bid_price)},
@@ -155,12 +155,12 @@ int main(int argc, char** argv) {
   });
 
   if (!adapter.start(config)) {
-    qts::log::error(std::cout, "ama_readonly", "vendor Init rejected the config (check UMS list and credential lengths)");
+    sts::log::error(std::cout, "ama_readonly", "vendor Init rejected the config (check UMS list and credential lengths)");
     return 3;
   }
-  qts::log::info(std::cout, "ama_readonly", "started", {{"vendor_version", adapter.vendor_version()}});
+  sts::log::info(std::cout, "ama_readonly", "started", {{"vendor_version", adapter.vendor_version()}});
 
-  std::vector<qts::InstrumentId> instruments;
+  std::vector<sts::InstrumentId> instruments;
   for (const std::string& id : split(options.instruments, ',')) instruments.push_back(id);
   adapter.subscribe(instruments);
 
@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
     const auto now = std::chrono::steady_clock::now();
     if (now >= next_report) {
       const auto stats = adapter.stats();
-      qts::log::info(std::cout, "ama_readonly", "progress",
+      sts::log::info(std::cout, "ama_readonly", "progress",
                      {
                          {"connected", adapter.connected() ? "true" : "false"},
                          {"received", std::to_string(stats.snapshots_received)},
@@ -191,7 +191,7 @@ int main(int argc, char** argv) {
 
   // Replay tick sequence holes observed during the window (ADR-028).
   std::size_t backfill_requests = 0;
-  for (const qts::AmaTickGap& gap : adapter.take_tick_gaps()) {
+  for (const sts::AmaTickGap& gap : adapter.take_tick_gaps()) {
     if (adapter.request_tick_backfill(gap)) ++backfill_requests;
   }
   std::this_thread::sleep_for(std::chrono::milliseconds{500});  // let paged replies land
@@ -200,7 +200,7 @@ int main(int argc, char** argv) {
   const auto stats = adapter.stats();
   const bool connected = adapter.connected();
   adapter.stop();
-  qts::log::info(std::cout, "ama_readonly", "final",
+  sts::log::info(std::cout, "ama_readonly", "final",
                  {
                      {"connected", connected ? "true" : "false"},
                      {"received", std::to_string(stats.snapshots_received)},

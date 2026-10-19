@@ -9,25 +9,25 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/portfolio/portfolio.hpp"
+#include "sts/portfolio/portfolio.hpp"
 
 #include <cassert>
 #include <string>
 
 namespace {
 
-qts::OrderIntent buy(const std::string& id, qts::Quantity qty, qts::Price price) {
-  return qts::OrderIntent{id, "paper", "test", "TEST", qts::Side::buy, qts::OrderType::limit, qts::TimeInForce::day, qty, price};
+sts::OrderIntent buy(const std::string& id, sts::Quantity qty, sts::Price price) {
+  return sts::OrderIntent{id, "paper", "test", "TEST", sts::Side::buy, sts::OrderType::limit, sts::TimeInForce::day, qty, price};
 }
 
-qts::OrderIntent sell(const std::string& id, qts::Quantity qty, qts::Price price) {
+sts::OrderIntent sell(const std::string& id, sts::Quantity qty, sts::Price price) {
   auto intent = buy(id, qty, price);
-  intent.side = qts::Side::sell;
+  intent.side = sts::Side::sell;
   return intent;
 }
 
 void average_cost_weights_fills() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.apply_fill(buy("b1", 10, 100), 10, 100);
   book.apply_fill(buy("b2", 10, 200), 10, 200);
   const auto position = book.position("TEST");
@@ -37,7 +37,7 @@ void average_cost_weights_fills() {
 }
 
 void sells_realize_pnl_and_reset_on_flat() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.apply_fill(buy("b1", 10, 100), 10, 100);
   book.apply_fill(sell("s1", 4, 150), 4, 150);
   assert(book.realized_pnl() == 4 * 50);
@@ -50,7 +50,7 @@ void sells_realize_pnl_and_reset_on_flat() {
 }
 
 void same_day_buys_are_not_sellable() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.apply_fill(buy("b1", 100, 10), 100, 10);
   auto position = book.position("TEST");
   assert(position.total == 100 && position.sellable == 0);  // T+1
@@ -60,7 +60,7 @@ void same_day_buys_are_not_sellable() {
 }
 
 void unrealized_needs_marks() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   assert(book.unrealized_pnl("TEST") == 0);
   book.apply_fill(buy("b1", 10, 100), 10, 100);
   book.update_mark("TEST", 130);
@@ -68,7 +68,7 @@ void unrealized_needs_marks() {
 }
 
 void fees_hit_cash_and_accumulate() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.apply_fee(0);  // no-op
   assert(book.total_fees() == 0 && book.cash() == 1'000'000);
   book.apply_fee(25);
@@ -76,19 +76,19 @@ void fees_hit_cash_and_accumulate() {
 }
 
 void zero_fill_is_ignored() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.apply_fill(buy("b1", 10, 100), 0, 100);
   assert(book.position("TEST").total == 0 && book.cash() == 1'000'000);
 }
 
-qts::OrderIntent buy_as(const std::string& id, const std::string& strategy, qts::Quantity qty, qts::Price price) {
+sts::OrderIntent buy_as(const std::string& id, const std::string& strategy, sts::Quantity qty, sts::Price price) {
   auto intent = buy(id, qty, price);
   intent.strategy_id = strategy;
   return intent;
 }
 
 void baskets_split_by_strategy_and_aggregate_exactly() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.apply_fill(buy_as("a1", "alpha", 10, 100), 10, 100);
   book.apply_fill(buy_as("b1", "beta", 10, 200), 10, 200);
   // Per-basket books are independent lots.
@@ -101,7 +101,7 @@ void baskets_split_by_strategy_and_aggregate_exactly() {
   assert(book.cash() == 1'000'000 - 3'000);
   // Realized PnL attributes to the selling basket only.
   auto sell_alpha = buy_as("a2", "alpha", 10, 150);
-  sell_alpha.side = qts::Side::sell;
+  sell_alpha.side = sts::Side::sell;
   book.apply_fill(sell_alpha, 10, 150);
   assert(book.realized_for("alpha") == 10 * 50);
   assert(book.realized_for("beta") == 0);
@@ -110,17 +110,17 @@ void baskets_split_by_strategy_and_aggregate_exactly() {
 }
 
 void empty_strategy_falls_into_passthrough() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   auto manual = buy("m1", 10, 100);
   manual.strategy_id.clear();
   book.apply_fill(manual, 10, 100);
-  assert(book.position_for(qts::kPassthroughStrategy, "TEST").total == 10);
+  assert(book.position_for(sts::kPassthroughStrategy, "TEST").total == 10);
   assert(book.position_for("", "TEST").total == 0);
   assert(book.position("TEST").total == 10);
 }
 
 void funded_inventory_is_settled_and_cash_neutral() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   book.fund_settled("grid-1", "TEST", 1000, 950);
   const auto position = book.position("TEST");
   assert(position.total == 1000 && position.sellable == 1000);
@@ -134,7 +134,7 @@ void funded_inventory_is_settled_and_cash_neutral() {
 }
 
 void equity_marks_or_falls_back_to_cost() {
-  qts::Portfolio book{1'000'000};
+  sts::Portfolio book{1'000'000};
   assert(book.equity() == 1'000'000);            // cash only
   book.apply_fill(buy("b1", 10, 100), 10, 100);  // cash 999000, 10 @ 100
   assert(book.equity() == 1'000'000);            // unmarked: cost basis back

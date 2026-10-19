@@ -3,15 +3,15 @@
   ******************************************************************************
   * @file           : pg_store.cpp
   * @author         : vivi wu
-  * @brief          : PostgreSQL backend: libpq implementation behind QTS_ENABLE_PG, fail-fast stub otherwise.
+  * @brief          : PostgreSQL backend: libpq implementation behind STS_ENABLE_PG, fail-fast stub otherwise.
   * @version        : 0.1.0
   * @date           : 10/10/26
   ******************************************************************************
   */
 // clang-format on
-#include "qts/persistence/pg_store.hpp"
+#include "sts/persistence/pg_store.hpp"
 
-#ifdef QTS_HAS_LIBPQ
+#ifdef STS_HAS_LIBPQ
   #include <libpq-fe.h>
 #endif
 
@@ -21,11 +21,11 @@
 #include <vector>
 
 #include "nlohmann/json.hpp"
-#include "qts/portfolio/portfolio.hpp"
+#include "sts/portfolio/portfolio.hpp"
 
-namespace qts {
+namespace sts {
 
-#ifdef QTS_HAS_LIBPQ
+#ifdef STS_HAS_LIBPQ
 namespace {
 
 using nlohmann::json;
@@ -329,7 +329,7 @@ namespace {
 
 [[noreturn]] void unavailable() {
   throw std::runtime_error(
-      "postgres projection backend is not wired in this build (formal phase): rebuild with -DQTS_ENABLE_PG=ON and system libpq "
+      "postgres projection backend is not wired in this build (formal phase): rebuild with -DSTS_ENABLE_PG=ON and system libpq "
       "(see ADR-038), or point the deployment at SQLite (sqlite_file) until then");
 }
 
@@ -358,4 +358,4 @@ std::vector<EventStore::PositionRow> PgEventStore::positions() { unavailable(); 
 
 #endif
 
-}  // namespace qts
+}  // namespace sts

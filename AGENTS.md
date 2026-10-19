@@ -1,9 +1,9 @@
-# QTS 协作约定
+# STS 协作约定
 
 ## 项目边界
 
-- QTS 是事件驱动交易系统（C++ 上限 C++17，当前单进程部署）；当前仅支持 paper/simulation，禁止将任何改动表述为可用于实盘。
-- Broker SDK 和私有字段只能存在于 `adapters/`，并受 `QTS_ENABLE_VENDOR_SDKS` 控制；`core`、`strategy`、`execution`、`oms`、`risk` 和 `qts_core` 不得引用它们。
+- STS 是事件驱动交易系统（C++ 上限 C++17，当前单进程部署）；当前仅支持 paper/simulation，禁止将任何改动表述为可用于实盘。
+- Broker SDK 和私有字段只能存在于 `adapters/`，并受 `STS_ENABLE_VENDOR_SDKS` 控制；`core`、`strategy`、`execution`、`oms`、`risk` 和 `sts_core` 不得引用它们。
 - `strategy` 只能生成 `OrderIntent`；`execution` 负责拆单；OMS 是唯一订单状态迁移点；每笔新单和撤单到达 `TradeApi` 前必须同步经过风控。
 - 热路径（行情 → 策略 → 执行 → 风控 → OMS → adapter）不得增加同步文件、数据库、网络 I/O 或无界等待。JSONL 是恢复权威，SQLite/PG 仅为可重建投影；超时表示结果未知，必须对账，不能当作失败。
 
@@ -23,13 +23,13 @@
 - 默认验证命令：
 
   ```bash
-  ./tools/qts.sh test
-  ./tools/qts.sh drill
-  ./tools/qts.sh format
-  ./tools/qts.sh secrets
+  ./tools/sts.sh test
+  ./tools/sts.sh drill
+  ./tools/sts.sh format
+  ./tools/sts.sh secrets
   ```
 
-- 若改动涉及账本、订单、风险、恢复或策略，额外运行相关集成测试及 `qts_replay verify`；若无法运行，明确说明原因与未验证范围。
+- 若改动涉及账本、订单、风险、恢复或策略，额外运行相关集成测试及 `sts_replay verify`；若无法运行，明确说明原因与未验证范围。
 - 用户可见的启动、配置、恢复或运维行为变化，同时更新 `README.md` 或 `docs/runbook.md`。
 
 ## 变更纪律

@@ -9,12 +9,12 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/broker/ama_snapshot.hpp"
+#include "sts/broker/ama_snapshot.hpp"
 
 #include <algorithm>
 #include <array>
 
-namespace qts {
+namespace sts {
 namespace {
 
 // Roma civil-date algorithm: days since 1970-01-01 for a proleptic
@@ -178,4 +178,4 @@ std::optional<QuoteEvent> AmaSnapshotNormalizer::normalize(const AmaSnapshotFixt
   return event;
 }
 
-}  // namespace qts
+}  // namespace sts

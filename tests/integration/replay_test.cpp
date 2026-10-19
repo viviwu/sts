@@ -15,19 +15,19 @@
 #include <string>
 #include <vector>
 
-#include "qts/broker/simulated_broker.hpp"
-#include "qts/execution/execution_api.hpp"
-#include "qts/oms/order_manager.hpp"
-#include "qts/persistence/ledger.hpp"
-#include "qts/research/replayer.hpp"
-#include "qts/strategy/grid_strategy.hpp"
+#include "sts/broker/simulated_broker.hpp"
+#include "sts/execution/execution_api.hpp"
+#include "sts/oms/order_manager.hpp"
+#include "sts/persistence/ledger.hpp"
+#include "sts/research/replayer.hpp"
+#include "sts/strategy/grid_strategy.hpp"
 
 namespace {
 
-const std::vector<qts::Price> kPath{1'000, 900, 950, 850, 900, 950, 1'000, 1'050};
+const std::vector<sts::Price> kPath{1'000, 900, 950, 850, 900, 950, 1'000, 1'050};
 
-qts::GridConfig grid_config() {
-  qts::GridConfig config{};
+sts::GridConfig grid_config() {
+  sts::GridConfig config{};
   config.strategy_id = "grid-1";
   config.account_id = "paper";
   config.instrument_id = "TEST";
@@ -41,33 +41,33 @@ qts::GridConfig grid_config() {
 struct RunSummary {
   int submitted{0};
   std::vector<std::string> order_ids;
-  std::vector<qts::ExecutionReport> finals;
-  std::vector<qts::LedgerEvent> ledger;
-  qts::Price cash{0};
-  qts::Quantity position{0};
-  qts::Timestamp end_time{};
+  std::vector<sts::ExecutionReport> finals;
+  std::vector<sts::LedgerEvent> ledger;
+  sts::Price cash{0};
+  sts::Quantity position{0};
+  sts::Timestamp end_time{};
 };
 
 RunSummary run_once() {
-  qts::EventBus events;
-  qts::SimulatedBroker broker{events};
+  sts::EventBus events;
+  sts::SimulatedBroker broker{events};
   broker.set_starting_cash(1'000'000);
-  qts::RiskEngine risk{{10'000, 0, true}};
-  qts::InMemoryEventLedger ledger{};
-  qts::OrderManager oms{broker, risk, events, &ledger};
-  qts::ManualClock clock{};
-  qts::GridStrategy strategy{grid_config(), 1'000};
-  qts::ImmediateAlgorithm execution{};
-  qts::Replayer replayer{strategy, execution, oms, broker, clock, broker.book(), events};
+  sts::RiskEngine risk{{10'000, 0, true}};
+  sts::InMemoryEventLedger ledger{};
+  sts::OrderManager oms{broker, risk, events, &ledger};
+  sts::ManualClock clock{};
+  sts::GridStrategy strategy{grid_config(), 1'000};
+  sts::ImmediateAlgorithm execution{};
+  sts::Replayer replayer{strategy, execution, oms, broker, clock, broker.book(), events};
 
   RunSummary summary{};
   std::uint64_t sequence = 0;
-  for (const qts::Price price : kPath) {
-    qts::QuoteEvent quote{};
+  for (const sts::Price price : kPath) {
+    sts::QuoteEvent quote{};
     quote.instrument_id = "TEST";
     quote.last_price = price;
     quote.sequence = ++sequence;
-    quote.quality = qts::QuoteQuality::valid;
+    quote.quality = sts::QuoteQuality::valid;
     const int before = summary.submitted;
     summary.submitted += replayer.run({quote}).submitted;
     for (int i = before; i < summary.submitted; ++i) {
@@ -76,7 +76,7 @@ RunSummary run_once() {
   }
   for (const auto& id : summary.order_ids) summary.finals.push_back(*oms.find(id));
   summary.ledger = ledger.replay(1);
-  broker.set_account_snapshot_handler([&](const qts::TradeAccountSnapshot& snapshot) {
+  broker.set_account_snapshot_handler([&](const sts::TradeAccountSnapshot& snapshot) {
     summary.cash = snapshot.available_cash;
     for (const auto& position : snapshot.positions) {
       if (position.instrument_id == "TEST") summary.position = position.total_quantity;
@@ -96,7 +96,7 @@ void replay_is_deterministic() {
   assert(first.ledger.size() == 21);
   assert(first.cash == 1'130'000);
   assert(first.position == -100);
-  assert(first.end_time == qts::Timestamp{std::chrono::seconds{8}});
+  assert(first.end_time == sts::Timestamp{std::chrono::seconds{8}});
 
   // Second run over identical bars reproduces everything field by field.
   assert(second.submitted == first.submitted);
@@ -123,19 +123,19 @@ void replay_is_deterministic() {
 // Single-shot parent for the iceberg replay drill: emits one 250-unit
 // parent on the first quote, then stays silent. Peaks only refresh when
 // fill reports are forwarded to the algorithm.
-class SingleParentStrategy final : public qts::Strategy {
+class SingleParentStrategy final : public sts::Strategy {
  public:
   std::string_view name() const noexcept override { return "single-parent"; }
-  std::vector<qts::OrderIntent> on_quote(const qts::QuoteEvent& quote, const qts::Portfolio& /*book*/) override {
+  std::vector<sts::OrderIntent> on_quote(const sts::QuoteEvent& quote, const sts::Portfolio& /*book*/) override {
     if (emitted_) return {};
     emitted_ = true;
-    qts::OrderIntent intent{};
+    sts::OrderIntent intent{};
     intent.client_order_id = "ice-1";
     intent.account_id = "paper";
     intent.strategy_id = "ice";
     intent.instrument_id = quote.instrument_id;
-    intent.side = qts::Side::buy;
-    intent.type = qts::OrderType::limit;
+    intent.side = sts::Side::buy;
+    intent.type = sts::OrderType::limit;
     intent.quantity = 250;
     intent.limit_price = 1'000;
     intent.trace_id = "trace-ice-1";
@@ -147,27 +147,27 @@ class SingleParentStrategy final : public qts::Strategy {
 };
 
 int run_iceberg_replay(std::vector<std::string>& order_ids) {
-  qts::EventBus events;
-  qts::SimulatedBroker broker{events};
+  sts::EventBus events;
+  sts::SimulatedBroker broker{events};
   broker.set_starting_cash(1'000'000);
-  qts::RiskEngine risk{{10'000, 0, true}};
-  qts::InMemoryEventLedger ledger{};
-  qts::OrderManager oms{broker, risk, events, &ledger};
-  qts::ManualClock clock{};
+  sts::RiskEngine risk{{10'000, 0, true}};
+  sts::InMemoryEventLedger ledger{};
+  sts::OrderManager oms{broker, risk, events, &ledger};
+  sts::ManualClock clock{};
   SingleParentStrategy strategy{};
-  qts::IcebergConfig iceberg{};
+  sts::IcebergConfig iceberg{};
   iceberg.display_quantity = 100;
-  qts::IcebergAlgorithm execution{iceberg};
-  qts::Replayer replayer{strategy, execution, oms, broker, clock, broker.book(), events};
+  sts::IcebergAlgorithm execution{iceberg};
+  sts::Replayer replayer{strategy, execution, oms, broker, clock, broker.book(), events};
 
   int submitted = 0;
   std::uint64_t sequence = 0;
   for (int bar = 0; bar < 4; ++bar) {
-    qts::QuoteEvent quote{};
+    sts::QuoteEvent quote{};
     quote.instrument_id = "TEST";
     quote.last_price = 1'000;
     quote.sequence = ++sequence;
-    quote.quality = qts::QuoteQuality::valid;
+    quote.quality = sts::QuoteQuality::valid;
     submitted += replayer.run({quote}).submitted;
   }
   for (const auto& id : std::vector<std::string>{"ice-1#0", "ice-1#1", "ice-1#2"}) {

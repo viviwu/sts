@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/gateway/gateway_transport.hpp"
+#include "sts/gateway/gateway_transport.hpp"
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -29,7 +29,7 @@
 
 #include "nlohmann/json.hpp"
 
-namespace qts::gateway {
+namespace sts::gateway {
 namespace {
 
 constexpr std::size_t kMaxPeers = 8;
@@ -94,7 +94,7 @@ nlohmann::json settle_account_to_json(const AccountSettleReport& row) {
   for (const auto& entry : row.diff.cash) {
     nlohmann::json item = nlohmann::json::object();
     item["field"] = entry.field;
-    item["qts"] = entry.qts_value;
+    item["sts"] = entry.sts_value;
     item["broker"] = entry.broker_value;
     item["comparable"] = entry.comparable;
     cash.push_back(std::move(item));
@@ -104,17 +104,17 @@ nlohmann::json settle_account_to_json(const AccountSettleReport& row) {
   for (const auto& entry : row.diff.positions) {
     nlohmann::json item = nlohmann::json::object();
     item["instrument"] = entry.instrument;
-    item["qts_total"] = entry.qts_total;
+    item["sts_total"] = entry.sts_total;
     item["broker_total"] = entry.broker_total;
-    item["qts_sellable"] = entry.qts_sellable;
+    item["sts_sellable"] = entry.sts_sellable;
     item["broker_sellable"] = entry.broker_sellable;
-    item["qts_avg"] = entry.qts_avg;
+    item["sts_avg"] = entry.sts_avg;
     item["broker_avg"] = entry.broker_avg;
     item["broker_frozen"] = entry.broker_frozen;
     positions.push_back(std::move(item));
   }
   node["positions"] = std::move(positions);
-  node["fees"] = row.diff.qts_fees_disclosed;
+  node["fees"] = row.diff.sts_fees_disclosed;
   return node;
 }
 
@@ -1064,4 +1064,4 @@ bool GatewayClient::poll_line(std::string& out, int timeout_ms) {
   }
 }
 
-}  // namespace qts::gateway
+}  // namespace sts::gateway

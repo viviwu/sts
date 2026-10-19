@@ -9,7 +9,7 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/ops/control.hpp"
+#include "sts/ops/control.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -18,9 +18,9 @@
 #include <stdexcept>
 
 #include "nlohmann/json.hpp"
-#include "qts/persistence/ledger.hpp"
+#include "sts/persistence/ledger.hpp"
 
-namespace qts::control {
+namespace sts::control {
 namespace {
 
 bool is_terminal_state(OrderStatus status) noexcept { return status == OrderStatus::filled || status == OrderStatus::cancelled || status == OrderStatus::rejected; }
@@ -137,7 +137,7 @@ bool parse_ticket_exchange(const std::string& text, Exchange& exchange) {
 // One manual ticket straight into OMS. The submit carries the same
 // synchronous risk gate as strategy children (OrderManager::submit
 // checks first); rejection lands in the ledger audit trail and the
-// operator reads the reason via qts_admin (rejected submits stay loud
+// operator reads the reason via sts_admin (rejected submits stay loud
 // here, never silent).
 ControlResult submit_manual(ControlContext& context, const ControlCommand& command) {
   Side side = Side::buy;
@@ -574,4 +574,4 @@ bool StrategyRegistry::account_of(const StrategyId& strategy_id, AccountId& acco
   return false;
 }
 
-}  // namespace qts::control
+}  // namespace sts::control

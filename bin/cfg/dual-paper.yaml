@@ -1,4 +1,4 @@
-# QTS dual-paper demo: two self-developed channels behind the Router.
+# STS dual-paper demo: two self-developed channels behind the Router.
 # simulated fills grid intents at reference; alternate enforces tick 50 /
 # lot 200 and reports rejections per its own rules (visible in the ledger).
 # Selection is yaml-only (no code change); no split weights here, so the
@@ -9,9 +9,9 @@ config_version: "1"
 rules_version: "1"
 # Recovery authority: JSONL event stream, appended across restarts.
 ledger_file: ../db/dual-ledger.jsonl
-# Query projection: async SQLite read model (qts_admin db --sqlite ...).
+# Query projection: async SQLite read model (sts_admin db --sqlite ...).
 sqlite_file: ../db/dual.db
-# Live-state snapshot for qts_admin state (zero IPC).
+# Live-state snapshot for sts_admin state (zero IPC).
 state_file: ../db/dual-state.json
 accounts:
   - id: paper-sim

@@ -42,7 +42,7 @@
 ## M5：生产加固（已完成，零依赖）
 
 - M5-1 网关账本二选一：`ledger_file` 为空走内存 drill，设路径经 `FileEventLedger` 跨重启追加。
-- M5-2 热路径吞吐基线：`qts_bench_throughput`，只记录不设硬门禁。
+- M5-2 热路径吞吐基线：`sts_bench_throughput`，只记录不设硬门禁。
 - M5-3 tidy 转硬门禁：CI 六 job 全绿关闭。
 
 验收：`ctest 17/17`（`WERROR`+UBSan），网关 drill `6/18/0` 不变。
@@ -75,8 +75,8 @@
 
 ## M9：演示线与 SQLite 落库（已完成，与 M7-2 并行）
 
-- M9-0 持续模拟行情 + 长跑（opt-in，SIGINT 优雅停机）→ M9-1 日志文件 sink → M9-2 `qts_admin` 离线查询 → M9-3 SQLite 异步投影（JSONL 恢复权威不变）。
-- 后续自研线上：自研 logger（debug 分级/过滤/时间戳/按日按启动唯一文件/跨天轮转）→ `qts_replay` 离线重放验证 → 统一 `./bin` 运行布局 → 网关通道选择（`accounts` + `routing` yaml 驱动）→ 主程序改名 `qts_server`。
+- M9-0 持续模拟行情 + 长跑（opt-in，SIGINT 优雅停机）→ M9-1 日志文件 sink → M9-2 `sts_admin` 离线查询 → M9-3 SQLite 异步投影（JSONL 恢复权威不变）。
+- 后续自研线上：自研 logger（debug 分级/过滤/时间戳/按日按启动唯一文件/跨天轮转）→ `sts_replay` 离线重放验证 → 统一 `./bin` 运行布局 → 网关通道选择（`accounts` + `routing` yaml 驱动）→ 主程序改名 `sts_server`。
 
 验收：`ctest 21/21`（`WERROR`+UBSan），默认 drill `6/18/0` 不变。
 

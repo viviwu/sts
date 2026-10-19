@@ -10,7 +10,7 @@
 
 ## 1. 已验证成立的设计
 
-| QTS 假设 | AMA 现实 | 结论 |
+| STS 假设 | AMA 现实 | 结论 |
 | --- | --- | --- |
 | 行情定点整数 | 全 int64：价 `Price6`、量 `Qty2`、金额 `Amt5`、费率 `Rate6/Rate7`（扩大倍数以转码指南为准，头文件只标类型名） | 成立；适配器侧按 §3 换算 |
 | 快照盘口表达 | `MDSnapshot` 自带 10 档 `bid/offer_price[10]` + `bid/offer_volume[10]` | 与 `QuoteEvent.bid/ask_levels` 同构，一档另进 `bid/ask_price/quantity` |
@@ -23,7 +23,7 @@
 
 ### 2.1 市场映射（`MarketType`，`ama_datatype.h:129`）
 
-| AMA | QTS `Exchange` |
+| AMA | STS `Exchange` |
 | --- | --- |
 | `kSSE = 101` | `sse` |
 | `kSZSE = 102` | `szse` |
@@ -33,11 +33,11 @@
 
 注意：交易侧映射（archforce.md §2）写“`104`北”，那是 ATP 交易接口的编号；AMA 行情里北交所是 `kNEEQ = 2`。两套编号体系不同，适配器不得复用交易侧的市场映射表。
 
-`InstrumentId` 合成：`security_code` 是裸代码（`char[16]`），适配器按 `"<code>.<SSE|SZSE|BSE>"` 组装； tick/lot/价格带等静态规则走 QTS `InstrumentMaster` 注入，不依赖 AMA 代码表（`GetCodeTableList` 系列仅为可选静态参考）。
+`InstrumentId` 合成：`security_code` 是裸代码（`char[16]`），适配器按 `"<code>.<SSE|SZSE|BSE>"` 组装； tick/lot/价格带等静态规则走 STS `InstrumentMaster` 注入，不依赖 AMA 代码表（`GetCodeTableList` 系列仅为可选静态参考）。
 
 ### 2.2 `MDSnapshot` → `QuoteEvent`（`ama_struct.h:516`）
 
-| AMA 字段 | QTS 字段 | 换算 |
+| AMA 字段 | STS 字段 | 换算 |
 | --- | --- | --- |
 | `bid_price[0]` / `bid_volume[0]` | `bid_price` / `bid_quantity` | 价 `/100`，量 `/100`（§3.1） |
 | `offer_price[0]` / `offer_volume[0]` | `ask_price` / `ask_quantity` | 同上 |
@@ -64,13 +64,13 @@
 
 ## 3. 适配器落地前置（写代码前必须定）
 
-1. **精度换算**：`Price6 /100`→`Price`（1e-4 元），`Qty2 /100`→`Quantity`（股），`Amt5 /10`→`cumulative_turnover`。整数除法截断方向要单测锁定（与交易侧“适配器侧换算”同责）。`Rate6/Rate7` 暂无 QTS 对应字段，需要时再扩展。
+1. **精度换算**：`Price6 /100`→`Price`（1e-4 元），`Qty2 /100`→`Quantity`（股），`Amt5 /10`→`cumulative_turnover`。整数除法截断方向要单测锁定（与交易侧“适配器侧换算”同责）。`Rate6/Rate7` 暂无 STS 对应字段，需要时再扩展。
 2. **陈旧判断靠自打戳**：`assess_quote_quality` 的 stale 用 `receive_time`（`instrument.hpp:73`），AMA 只给交易所时间。适配器必须在回调入队瞬间打戳；`max_staleness` 默认 3s 对快照推送频率是否合适，由联调实测定，不得硬编码改默认值而不留配置。
 3. **`sequence` 合成**：快照只有深 `channel_no`、无序号。建议按 instrument 维护本地单调计数器（收到即 `++`），简单且满足 `sequence <= last → out_of_sequence` 的语义；`orig_time` 回退的快照会被判 `crossed` 以外的 valid——乱序快照的取舍（覆盖 vs 丢弃）由适配器显式决策并单测。逐笔启用后，`(channel_no, appl_seq_num)` 复合键另行设计，不得与快照计数器混用同一序列空间。
 4. **回调线程**：与交易侧 §3.4 同责——队列 + 专用投递线程 + `FreeMemory` 同线程释放；回调内只做浅拷贝入队。`Cfg::is_thread_safe` 只管“接口集线程安全”，不替代投递串行化。
-5. **FPGA 通道字段缺失**：头文件多处 `note:FPGA 通道上海市场不披露此字段`（如 `IOPV`、`md_stream_id`、撤单统计）。适配器对缺失数值字段填 0 并降级可观测（不得当有效值用）；`IOPV` 等暂无 QTS 字段，直接丢弃。
+5. **FPGA 通道字段缺失**：头文件多处 `note:FPGA 通道上海市场不披露此字段`（如 `IOPV`、`md_stream_id`、撤单统计）。适配器对缺失数值字段填 0 并降级可观测（不得当有效值用）；`IOPV` 等暂无 STS 字段，直接丢弃。
 6. **会话映射**：`Init` 只校验配置，鉴权登录异步经 `OnEvent` 返回。`QuoteApi::connected()` ← `kUMSLogonSuccess` 置 true，`kChannelTCPSessionClosed` / `kChannelTCPHeartbeatTimeout` / `kUMSHeartbeatTimeout` 置 false 并冻结新订阅（类比交易侧断线语义）；`kIncompleteData` → 告警 + `QueryMDTick` 补逐笔 + 快照覆盖对齐。
-7. **订阅粒度**：QTS 按 instrument 订阅，AMA 支持空代码全市场订阅。适配器默认按需订阅（`kAdd` 精确代码），全市场订阅需显式配置开关（流量与 `ha_mode` 过滤成本）。
+7. **订阅粒度**：STS 按 instrument 订阅，AMA 支持空代码全市场订阅。适配器默认按需订阅（`kAdd` 精确代码），全市场订阅需显式配置开关（流量与 `ha_mode` 过滤成本）。
 
 ## 4. 暂不动
 

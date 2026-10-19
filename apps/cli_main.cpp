@@ -3,7 +3,7 @@
   ******************************************************************************
   * @file           : cli_main.cpp
   * @author         : vivi wu
-  * @brief          : qts_cli resident gateway REPL: commands plus live pushes.
+  * @brief          : sts_cli resident gateway REPL: commands plus live pushes.
   * @version        : 0.1.0
   * @date           : 11/10/26
   ******************************************************************************
@@ -32,7 +32,7 @@
 #endif
 
 #include "nlohmann/json.hpp"
-#include "qts/gateway/gateway_transport.hpp"
+#include "sts/gateway/gateway_transport.hpp"
 #include "yaml-cpp/yaml.h"
 
 namespace {
@@ -48,8 +48,8 @@ bool stdin_is_tty() {
 struct CliOptions {
   std::string socket;
   std::string tcp;  // P1: host:port, alternative to --socket
-  std::string prompt{"qts> "};
-  // qts_app.yaml presets (used when the command omits them).
+  std::string prompt{"sts> "};
+  // sts_app.yaml presets (used when the command omits them).
   std::string default_operator;
   std::string default_account;
   std::string default_strategy;
@@ -75,10 +75,10 @@ bool parse_cli_args(int argc, char** argv, CliOptions& out) {
     }
   }
   if (!out.socket.empty() && !out.tcp.empty()) return false;
-  return true;  // empty endpoint falls back to cfg/qts_app.yaml in main
+  return true;  // empty endpoint falls back to cfg/sts_app.yaml in main
 }
 
-// Client defaults file (<exe-dir>/cfg/qts_app.yaml): connection endpoint
+// Client defaults file (<exe-dir>/cfg/sts_app.yaml): connection endpoint
 // plus operator/account/strategy presets. Explicit argv wins; missing file
 // with no argv endpoint is a usage error (never a silent default server).
 bool load_app_defaults(const std::string& app_path, CliOptions& out, std::string& error) {
@@ -119,8 +119,8 @@ bool load_app_defaults(const std::string& app_path, CliOptions& out, std::string
 }
 
 void usage() {
-  std::cerr << "usage: qts_cli [--socket PATH|--tcp host:port] [--prompt TEXT]\n"
-            << "  No endpoint flag reads <exe-dir>/cfg/qts_app.yaml (connection +\n"
+  std::cerr << "usage: sts_cli [--socket PATH|--tcp host:port] [--prompt TEXT]\n"
+            << "  No endpoint flag reads <exe-dir>/cfg/sts_app.yaml (connection +\n"
             << "  account/strategy presets). Resident gateway shell (paper accounts\n"
             << "  stay open; live-broker accounts log in with their broker password):\n"
             << "  reads commands from stdin (one per line, piped scripts work),\n"
@@ -133,7 +133,7 @@ void usage() {
             << "  limit= | interval= | count= | what= | menu= | sub=). Bare tokens fill\n"
             << "  the verb's default key (id, or account for login, sub for strategy,\n"
             << "  menu for quick, what for sub/watch, strategy for positions).\n"
-            << "  login takes password= or reads $QTS_GW_PW (tty hidden prompt fallback).\n"
+            << "  login takes password= or reads $STS_GW_PW (tty hidden prompt fallback).\n"
             << "  watch what=cash|orders|positions|fills|progress [interval=2] [count=5]\n"
             << "  re-runs one query (plus account=/strategy=/id= filters).\n"
             << "  quick strategy|buy|sell [k=v ...] [confirm=y]: guided ticket with\n"
@@ -147,11 +147,11 @@ void usage() {
 }
 
 // Hidden password prompt (P2): tty-only, no echo; piped stdin falls back
-// to a plain read (scripts should prefer $QTS_GW_PW anyway).
+// to a plain read (scripts should prefer $STS_GW_PW anyway).
 std::string read_secret(const std::string& prompt_text) {
 #ifdef _WIN32
   (void)prompt_text;
-  throw std::runtime_error("hidden password prompt needs a POSIX tty (use $QTS_GW_PW)");
+  throw std::runtime_error("hidden password prompt needs a POSIX tty (use $STS_GW_PW)");
 #else
   termios saved{};
   if (::tcgetattr(STDIN_FILENO, &saved) != 0) {
@@ -175,7 +175,7 @@ std::string read_secret(const std::string& prompt_text) {
 // never misdelivered.
 class FramePump {
  public:
-  FramePump(qts::gateway::GatewayClient& client, std::mutex& print, std::string prompt, bool tty)
+  FramePump(sts::gateway::GatewayClient& client, std::mutex& print, std::string prompt, bool tty)
       : client_(client),
         print_(print),
         prompt_(std::move(prompt)),
@@ -200,8 +200,8 @@ class FramePump {
         replies_.erase(found);
         return reply;
       }
-      if (dead_.load()) throw std::runtime_error("qts_cli: server closed the connection");
-      if (cv_.wait_until(guard, deadline) == std::cv_status::timeout) throw std::runtime_error("qts_cli: no reply (timed out)");
+      if (dead_.load()) throw std::runtime_error("sts_cli: server closed the connection");
+      if (cv_.wait_until(guard, deadline) == std::cv_status::timeout) throw std::runtime_error("sts_cli: no reply (timed out)");
     }
   }
 
@@ -245,7 +245,7 @@ class FramePump {
   }
 
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-  qts::gateway::GatewayClient& client_;
+  sts::gateway::GatewayClient& client_;
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
   std::mutex& print_;
   std::string prompt_;
@@ -259,9 +259,9 @@ class FramePump {
 };
 
 struct Session {
-  std::unique_ptr<qts::gateway::GatewayClient> owned;
+  std::unique_ptr<sts::gateway::GatewayClient> owned;
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
-  qts::gateway::GatewayClient& client;
+  sts::gateway::GatewayClient& client;
   FramePump pump;
   std::mutex print;
   std::int64_t req{0};
@@ -271,14 +271,14 @@ struct Session {
   std::vector<std::uint64_t> subs;
   bool tty{false};
   std::string prompt;
-  // qts_app.yaml presets (fill command args when omitted).
+  // sts_app.yaml presets (fill command args when omitted).
   std::string default_operator;
   std::string default_account;
   std::string default_strategy;
   std::string default_instrument;
   std::map<std::string, std::string> quick_defaults;
 
-  Session(std::unique_ptr<qts::gateway::GatewayClient> dialed, const CliOptions& opts, bool tty_in)
+  Session(std::unique_ptr<sts::gateway::GatewayClient> dialed, const CliOptions& opts, bool tty_in)
       : owned(std::move(dialed)),
         client(*owned),
         pump(client, print, opts.prompt, tty_in),
@@ -291,20 +291,20 @@ struct Session {
         quick_defaults(opts.quick_defaults) {}
 };
 
-std::unique_ptr<qts::gateway::GatewayClient> dial_session(const CliOptions& opts) {
+std::unique_ptr<sts::gateway::GatewayClient> dial_session(const CliOptions& opts) {
   if (!opts.tcp.empty()) {
     const std::size_t mark = opts.tcp.rfind(':');
-    if (mark == std::string::npos || mark == 0 || mark + 1 >= opts.tcp.size()) throw std::runtime_error("qts_cli --tcp must be host:port");
+    if (mark == std::string::npos || mark == 0 || mark + 1 >= opts.tcp.size()) throw std::runtime_error("sts_cli --tcp must be host:port");
     unsigned long port = 0;
     try {
       port = std::stoul(opts.tcp.substr(mark + 1));
     } catch (const std::exception&) {
-      throw std::runtime_error("qts_cli --tcp port must be numeric");
+      throw std::runtime_error("sts_cli --tcp port must be numeric");
     }
-    if (port == 0 || port > 65535) throw std::runtime_error("qts_cli --tcp port out of range");
-    return std::make_unique<qts::gateway::GatewayClient>(opts.tcp.substr(0, mark), static_cast<std::uint16_t>(port));
+    if (port == 0 || port > 65535) throw std::runtime_error("sts_cli --tcp port out of range");
+    return std::make_unique<sts::gateway::GatewayClient>(opts.tcp.substr(0, mark), static_cast<std::uint16_t>(port));
   }
-  return std::make_unique<qts::gateway::GatewayClient>(opts.socket);
+  return std::make_unique<sts::gateway::GatewayClient>(opts.socket);
 }
 
 nlohmann::json roundtrip(Session& session, nlohmann::json body) {
@@ -401,7 +401,7 @@ nlohmann::json command_body(const std::string& verb, const std::map<std::string,
   } else if (verb == "positions") {
     body["op"] = "positions_for";
     const std::string basket = text_for(args, "strategy");
-    body["strategy"] = basket.empty() ? std::string{qts::kPassthroughStrategy} : basket;
+    body["strategy"] = basket.empty() ? std::string{sts::kPassthroughStrategy} : basket;
     body["account"] = text_for(args, "account");
   } else if (verb == "fills") {
     body["op"] = "fills";
@@ -514,7 +514,7 @@ bool run_line(Session& session, const std::string& line) {
   std::string piece;
   while (words >> piece) tokens.push_back(piece);
   std::map<std::string, std::string> args = parse_kv(tokens, verb);
-  // qts_app.yaml presets fill omitted keys (explicit k=v always wins).
+  // sts_app.yaml presets fill omitted keys (explicit k=v always wins).
   if (args["operator"].empty() && !session.default_operator.empty()) args["operator"] = session.default_operator;
   if (args["account"].empty() && !session.default_account.empty()) args["account"] = session.default_account;
   if (args["strategy"].empty() && !session.default_strategy.empty()) args["strategy"] = session.default_strategy;
@@ -602,15 +602,15 @@ bool run_line(Session& session, const std::string& line) {
       if (!line.empty()) account = line;
       args["account"] = account;
     }
-    // Password discipline: explicit password= for scripts, else $QTS_GW_PW,
+    // Password discipline: explicit password= for scripts, else $STS_GW_PW,
     // else a tty hidden prompt. Never echoed, never logged.
     std::string password = text_for(args, "password");
     if (password.empty()) {
-      const char* env = std::getenv("QTS_GW_PW");
+      const char* env = std::getenv("STS_GW_PW");
       if (env != nullptr) password = env;
     }
     if (password.empty()) {
-      if (!session.tty) throw std::runtime_error("login needs password= or $QTS_GW_PW");
+      if (!session.tty) throw std::runtime_error("login needs password= or $STS_GW_PW");
       std::lock_guard<std::mutex> guard(session.print);
       std::cout << "password for " << (account.empty() ? "-" : account) << ": " << std::flush;
       password = read_secret("password: ");
@@ -868,8 +868,8 @@ bool run_line(Session& session, const std::string& line) {
 
 }  // namespace
 
-// qts_cli (P2): resident downstream shell over one gateway session.
-// Login is per-connection via the login verb (password by $QTS_GW_PW,
+// sts_cli (P2): resident downstream shell over one gateway session.
+// Login is per-connection via the login verb (password by $STS_GW_PW,
 // explicit password=, or a tty hidden prompt; never logged); stdin is the
 // script (piped runs are deterministic apart from push interleaving).
 int main(int argc, char** argv) {
@@ -879,12 +879,12 @@ int main(int argc, char** argv) {
     return 2;
   }
   if (opts.socket.empty() && opts.tcp.empty()) {
-    // No endpoint on argv: fall back to <exe-dir>/cfg/qts_app.yaml, so
-    // bare ./qts_cli works straight from bin/.
+    // No endpoint on argv: fall back to <exe-dir>/cfg/sts_app.yaml, so
+    // bare ./sts_cli works straight from bin/.
     std::string self = argv[0];
     const std::size_t mark = self.find_last_of("/\\");
     const std::string exe_dir = mark == std::string::npos ? std::string{} : self.substr(0, mark);
-    const std::string app_path = exe_dir.empty() ? "cfg/qts_app.yaml" : exe_dir + "/cfg/qts_app.yaml";
+    const std::string app_path = exe_dir.empty() ? "cfg/sts_app.yaml" : exe_dir + "/cfg/sts_app.yaml";
     std::string error;
     if (!load_app_defaults(app_path, opts, error)) {
       std::cerr << error << '\n';
@@ -920,7 +920,7 @@ int main(int argc, char** argv) {
     }
     session.pump.stop();
   } catch (const std::exception& e) {
-    std::cerr << "qts_cli: " << e.what() << '\n';
+    std::cerr << "sts_cli: " << e.what() << '\n';
     return 2;
   }
   return 0;

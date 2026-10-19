@@ -9,13 +9,13 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/risk/risk_engine.hpp"
+#include "sts/risk/risk_engine.hpp"
 
 #include <cstdlib>
 #include <limits>
 #include <utility>
 
-namespace qts {
+namespace sts {
 
 RiskEngine::RiskEngine(RiskLimits limits)
     : limits_{limits} {}
@@ -346,4 +346,4 @@ void RiskEngine::set_rate_limit(std::size_t max_orders, std::chrono::nanoseconds
   rate_attempts_.clear();
 }
 
-}  // namespace qts
+}  // namespace sts

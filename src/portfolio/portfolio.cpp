@@ -9,13 +9,13 @@
   ******************************************************************************
   */
 // clang-format on
-#include "qts/portfolio/portfolio.hpp"
+#include "sts/portfolio/portfolio.hpp"
 
 #include <algorithm>
 #include <limits>
 #include <utility>
 
-namespace qts {
+namespace sts {
 
 void Portfolio::apply_fill(const OrderIntent& intent, Quantity last_quantity, Price last_price) {
   if (last_quantity <= 0 || last_price < 0) return;
@@ -193,4 +193,4 @@ std::vector<StrategyId> Portfolio::strategies() const {
   return out;
 }
 
-}  // namespace qts
+}  // namespace sts
